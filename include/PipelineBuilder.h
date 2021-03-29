@@ -1,7 +1,7 @@
 #pragma once
 
 #include "VkUtils.h"
-#include "Vertex.h"
+#include "Mesh.h"
 namespace tgl {
     class PipelineBuilder {
     public:

@@ -20,7 +20,6 @@ int main() {
     triangleMesh.vertices[0].position = { 1.f, 1.f, 0.0f };
     triangleMesh.vertices[1].position = {-1.f, 1.f, 0.0f };
     triangleMesh.vertices[2].position = { 0.f,-1.f, 0.0f };
-
     triangleMesh.vertices[0].color = { 0.f, 1.f, 0.0f, 1.0f };
     triangleMesh.vertices[1].color = { 0.f, 1.f, 0.0f, 1.0f };
     triangleMesh.vertices[2].color = { 0.f, 1.f, 0.0f, 1.0f };
@@ -36,7 +35,8 @@ int main() {
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
         window.updateEvents();
-        renderer.render(triangleMesh);
+       renderer.render(triangleMesh);
+       renderer.render(triangleMesh);
     }
     //Destroy the renderer
     renderer.destroy();

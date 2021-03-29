@@ -5,6 +5,7 @@
 #include "VkBootstrap.h"
 #include "Mesh.h"
 #include "DeletionQueue.h"
+#include <glm/gtx/transform.hpp>
 #include <cstring>
 #define TGL_LOGGER_ENABLED
 namespace tgl {

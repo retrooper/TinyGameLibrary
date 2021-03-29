@@ -71,9 +71,15 @@ namespace tgl {
         vkPipelineColorBlendStateCreateInfo.attachmentCount = 1;
         vkPipelineColorBlendStateCreateInfo.pAttachments = &vkPipelineColorBlendAttachmentState;
 
+        //Push constants
+        VkPushConstantRange vkPushConstantRange{};
+        vkPushConstantRange.offset = 0;
+        vkPushConstantRange.size = sizeof(MeshPushConstants);
+        vkPushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;//only accessible in the vertex shader
         VkPipelineLayoutCreateInfo vkPipelineLayoutCreateInfo{};
         vkPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        //Vertex shader has no input
+        vkPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+        vkPipelineLayoutCreateInfo.pPushConstantRanges = &vkPushConstantRange;
         VK_HANDLE_ERROR(vkCreatePipelineLayout(vkLogicalDevice, &vkPipelineLayoutCreateInfo, nullptr, &vkPipelineLayout), "Failed to create a pipeline layout!");
 
         VkGraphicsPipelineCreateInfo vkGraphicsPipelineCreateInfo{};

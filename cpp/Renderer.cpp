@@ -22,7 +22,7 @@ namespace tgl {
                 .use_default_debug_messenger();
         std::cout << "COUNT: " << glfwExtensionCount << std::endl;
         for (int i = 0; i < glfwExtensionCount; i++) {
-            const char* glfwExtension = glfwExtensions[i];
+            const char *glfwExtension = glfwExtensions[i];
             std::cout << "Extension: " << glfwExtension << std::endl;
             builder = builder.enable_extension(glfwExtension);
         }
@@ -35,7 +35,8 @@ namespace tgl {
             //store the debug messenger
             vkDebugUtilsMessenger = vkb_inst.debug_messenger;
 
-            VK_HANDLE_ERROR(glfwCreateWindowSurface(vkInstance, window->glfwWindow, nullptr, &vkSurface), "Failed to create a window surface!");
+            VK_HANDLE_ERROR(glfwCreateWindowSurface(vkInstance, window->glfwWindow, nullptr, &vkSurface),
+                            "Failed to create a window surface!");
 
             vkb::PhysicalDeviceSelector physicalDeviceSelector(vkb_inst);
             auto phys_ret = physicalDeviceSelector
@@ -44,8 +45,7 @@ namespace tgl {
                     .select();
             if (phys_ret.has_value()) {
                 gpu = GPU(phys_ret.value().physical_device);
-            }
-            else {
+            } else {
                 ERROR("Failed to find a supported GPU!");
             }
 
@@ -61,8 +61,7 @@ namespace tgl {
             vmaAllocatorCreateInfo.device = vkLogicalDevice;
             vmaAllocatorCreateInfo.physicalDevice = gpu.vkPhysicalDevice;
             vmaCreateAllocator(&vmaAllocatorCreateInfo, &allocator);
-        }
-        else {
+        } else {
             ERROR("Failed to create a vulkan instance!");
         }
     }
@@ -213,9 +212,9 @@ namespace tgl {
 
         vkDestroyShaderModule(vkLogicalDevice, vkVertexShaderModule, nullptr);
         vkDestroyShaderModule(vkLogicalDevice, vkFragmentShaderModule, nullptr);
-        DeletionQueue::queue([=](){
+        DeletionQueue::queue([=]() {
             vkDestroyPipelineLayout(vkLogicalDevice, pipelineBuilder.vkPipelineLayout, nullptr);
-           vkDestroyPipeline(vkLogicalDevice, vkGraphicsPipeline, nullptr);
+            vkDestroyPipeline(vkLogicalDevice, vkGraphicsPipeline, nullptr);
         });
 
     }
@@ -231,7 +230,7 @@ namespace tgl {
         initGraphicsPipeline();
     }
 
-    void Renderer::uploadMesh(Mesh& mesh) {
+    void Renderer::uploadMesh(Mesh &mesh) {
         VkBufferCreateInfo vkBufferCreateInfo{};
         vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         vkBufferCreateInfo.size = mesh.vertices.size() * sizeof(Vertex);
@@ -244,22 +243,24 @@ namespace tgl {
         VK_HANDLE_ERROR(
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
-                                &mesh.allocatedBuffer.vkBuffer,&mesh.allocatedBuffer.allocation, nullptr),
-                                "Failed to create a buffer for a mesh!");
+                                &mesh.allocatedBuffer.vkBuffer, &mesh.allocatedBuffer.allocation, nullptr),
+                "Failed to create a buffer for a mesh!");
 
         DeletionQueue::queue([=]() {
             vmaDestroyBuffer(allocator, mesh.allocatedBuffer.vkBuffer, mesh.allocatedBuffer.allocation);
         });
 
         //Converted our vertices data into GPU readable data
-        void* data;
+        void *data;
         vmaMapMemory(allocator, mesh.allocatedBuffer.allocation, &data);
         memcpy(data, mesh.vertices.data(), mesh.vertices.size() * sizeof(Vertex));
 
         vmaUnmapMemory(allocator, mesh.allocatedBuffer.allocation);
     }
 
-    void Renderer::render(Mesh& mesh) {
+    int frameNumber = 0;
+
+    void Renderer::render(Mesh &mesh) {
         int waitTimeout = 1000000000; //One second
         //wait until the GPU has finished rendering the last frame.
         VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &vkRenderFence, true, waitTimeout),
@@ -295,6 +296,25 @@ namespace tgl {
         //bind the mesh vertex buffer with offset 0
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(vkMainCommandBuffer, 0, 1, &mesh.allocatedBuffer.vkBuffer, &offset);
+
+        //Process push constants
+        glm::vec3 camPos = { 0.f,0.f,-2.f };
+
+        glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+        //camera projection
+        glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+        projection[1][1] *= -1;
+        //model rotation
+        glm::mat4 model = glm::rotate(glm::mat4{ 1.0f }, glm::radians(frameNumber * 0.4f), glm::vec3(0, 1, 0));
+
+        //calculate final mesh matrix
+        glm::mat4 mesh_matrix = projection * view * model;
+
+        MeshPushConstants constants{};
+        constants.renderMatrix = mesh_matrix;
+
+        //upload the matrix to the GPU via pushconstants
+        vkCmdPushConstants(vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
 
         //we can now draw the mesh
         vkCmdDraw(vkMainCommandBuffer, mesh.vertices.size(), 1, 0, 0);
@@ -336,6 +356,7 @@ namespace tgl {
 
         VK_HANDLE_ERROR(vkQueuePresentKHR(vkGraphicsQueue, &vkPresentInfo),
                         "Failed to present an image to the screen!");
+        frameNumber++;
     }
 
     void Renderer::destroy() {
