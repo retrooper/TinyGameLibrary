@@ -74,13 +74,74 @@ namespace tgl {
         //Push constants
         VkPushConstantRange vkPushConstantRange{};
         vkPushConstantRange.offset = 0;
-        vkPushConstantRange.size = sizeof(MeshPushConstants);
+        vkPushConstantRange.size = sizeof(CameraData);
         vkPushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;//only accessible in the vertex shader
+
+        VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding;
+        vkDescriptorSetLayoutBinding.binding = 0; //Binding we specified in the shader
+        vkDescriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        vkDescriptorSetLayoutBinding.descriptorCount = 1;
+        vkDescriptorSetLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; //Use in our vertex shader
+        vkDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+
+        VkDescriptorPoolSize vkDescriptorPoolSize;
+        vkDescriptorPoolSize.descriptorCount = 1;
+        vkDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+        VkDescriptorPoolSize vkSamplerPoolSize;
+        vkSamplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        vkSamplerPoolSize.descriptorCount = 1;
+
+        std::vector<VkDescriptorPoolSize> vkDescriptorPoolSizes;
+        vkDescriptorPoolSizes.reserve(2);
+        vkDescriptorPoolSizes.push_back(vkDescriptorPoolSize);
+        vkDescriptorPoolSizes.push_back(vkSamplerPoolSize);
+
+        VkDescriptorPoolCreateInfo vkDescriptorPoolCreateInfo;
+        vkDescriptorPoolCreateInfo.pNext = nullptr;
+        vkDescriptorPoolCreateInfo.flags = 0;
+        vkDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        vkDescriptorPoolCreateInfo.maxSets = 1; //One set
+        vkDescriptorPoolCreateInfo.poolSizeCount = vkDescriptorPoolSizes.size();
+        vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSizes.data();
+
+        VK_HANDLE_ERROR(
+                vkCreateDescriptorPool(vkLogicalDevice, &vkDescriptorPoolCreateInfo, nullptr, &vkDescriptorPool),
+                "Failed to create a descriptor pool!");
+
+        VkDescriptorSetLayoutCreateInfo vkDescriptorSetLayoutCreateInfo;
+        vkDescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        vkDescriptorSetLayoutCreateInfo.pNext = nullptr;
+        vkDescriptorSetLayoutCreateInfo.flags = 0;
+        vkDescriptorSetLayoutCreateInfo.bindingCount = 1;
+        vkDescriptorSetLayoutCreateInfo.pBindings = &vkDescriptorSetLayoutBinding;
+
+        VK_HANDLE_ERROR(vkCreateDescriptorSetLayout(vkLogicalDevice, &vkDescriptorSetLayoutCreateInfo, nullptr, &vkDescriptorSetLayout),
+                        "Failed to create a descriptor set layout!");
+
+        vkDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        vkDescriptorSetAllocateInfo.pNext = nullptr;
+        vkDescriptorSetAllocateInfo.descriptorPool = vkDescriptorPool;
+        vkDescriptorSetAllocateInfo.descriptorSetCount = 1;
+        vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout;
+
+        VK_HANDLE_ERROR(
+                vkAllocateDescriptorSets(vkLogicalDevice, &vkDescriptorSetAllocateInfo, &vkDescriptorSet),
+                "Failed to allocate a descriptor set!");
+        //TOODO vk write descriptorset
+
+
         VkPipelineLayoutCreateInfo vkPipelineLayoutCreateInfo{};
         vkPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         vkPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
         vkPipelineLayoutCreateInfo.pPushConstantRanges = &vkPushConstantRange;
+        vkPipelineLayoutCreateInfo.setLayoutCount = 1;
+        vkPipelineLayoutCreateInfo.pSetLayouts = &vkDescriptorSetLayout;
+
         VK_HANDLE_ERROR(vkCreatePipelineLayout(vkLogicalDevice, &vkPipelineLayoutCreateInfo, nullptr, &vkPipelineLayout), "Failed to create a pipeline layout!");
+
+
 
         VkPipelineDepthStencilStateCreateInfo vkPipelineDepthStencilStateCreateInfo{};
         vkPipelineDepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

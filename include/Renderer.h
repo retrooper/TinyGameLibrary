@@ -9,9 +9,11 @@
 #include "AllocatedImage.h"
 #include "Camera.h"
 #include "RenderObject.h"
+#include "Light.h"
+#include "MeshData.h"
 #include <glm/gtx/transform.hpp>
 #include <cstring>
-
+#include <math.h>
 #define TGL_LOGGER_ENABLED
 namespace tgl {
     class Renderer {
@@ -107,7 +109,7 @@ namespace tgl {
 
         void registerEntity(Entity& entity);
 
-        void render(Camera& camera);
+        void render(Camera& camera, Light& light);
 
         void drawObjects(VkCommandBuffer vkCommandBuffer, RenderObject *first, uint32_t count);
 

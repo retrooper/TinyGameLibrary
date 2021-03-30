@@ -3,14 +3,34 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec4 color;
 
-layout(location = 0) out vec4 vertColor;
+//Output attributes
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec3 fragNormal;
+layout(location = 2) out vec3 fragViewVec;
+layout(location = 3) out vec3 fragLightPos;
+layout(location = 4) out vec3 fragWorldPos;
 
 layout( push_constant ) uniform constants
 {
-    vec4 data;
-    mat4 renderMatrix;
-} PushConstants;
+    mat4 view;
+    mat4 projection;
+} CameraData;
+
+
+layout(binding = 0) uniform modeldata
+{
+    mat4 model;
+    vec3 lightPos;
+} ModelData;
 void main() {
-    gl_Position = PushConstants.renderMatrix * vec4(position, 1);
-    vertColor = color;
+    vec3 lightPos = vec3(0, 0, 2);
+    vec4 worldPos = ModelData.model * vec4(position, 1);
+    gl_Position = CameraData.projection * CameraData.view * worldPos;
+
+    fragColor = color;
+    //fragUVCoord = uvCoord;
+    fragNormal = mat3(ModelData.model) * normal;
+    fragViewVec = (CameraData.view * worldPos).xyz;
+    fragLightPos = ModelData.lightPos;
+    fragWorldPos = (worldPos).xyz;
 }

@@ -6,6 +6,106 @@
 
 using namespace tgl;
 
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        int cursorStatus = glfwGetInputMode(window, GLFW_CURSOR);
+        if (cursorStatus == GLFW_CURSOR_NORMAL) {
+            cursorStatus = GLFW_CURSOR_DISABLED;
+        }
+        else {
+            cursorStatus = GLFW_CURSOR_NORMAL;
+        }
+        glfwSetInputMode(window, GLFW_CURSOR, cursorStatus);
+    }
+}
+
+static void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+
+}
+
+double to_radians(double a) {
+    return a * (3.14 / 180);
+}
+
+void handleMovement(int key, Camera& camera, double deltaTime) {
+    double yaw = to_radians(camera.yaw);
+    double frontSpeed = 1;
+    double backSpeed = 1;
+    double leftSpeed = 1;
+    double rightSpeed = 1;
+    double upSpeed = 1;
+    double downSpeed = 1;
+    glm::vec3 forwardVec = {sin(-yaw) * frontSpeed * deltaTime, -cos(yaw) * frontSpeed * deltaTime, 0};
+    switch (key) {
+        case GLFW_KEY_W:
+            camera.position += forwardVec;
+            break;
+        case GLFW_KEY_S:
+            camera.position += forwardVec * glm::vec3(-1, -1, -1);
+            break;
+        case GLFW_KEY_A:
+            camera.position.x -= forwardVec.y;
+            camera.position.y += forwardVec.x;
+            break;
+        case GLFW_KEY_D:
+            camera.position.x += forwardVec.y;
+            camera.position.y -= forwardVec.x;
+            break;
+        case GLFW_KEY_SPACE:
+            camera.position.z += upSpeed * deltaTime;
+            break;
+        case GLFW_KEY_LEFT_ALT:
+            camera.position.z -= downSpeed * deltaTime;
+            break;
+    }
+}
+
+void handleMouseMovement(Camera& camera, Window& window, double deltaTime) {
+    double mousePosX, mousePosY;
+    glfwGetCursorPos(window.glfwWindow, &mousePosX, &mousePosY);
+    camera.mousePos.lastPosX = camera.mousePos.posX;
+    camera.mousePos.lastPosY = camera.mousePos.posX;
+    camera.mousePos.posX = mousePosX;
+    camera.mousePos.posY = mousePosY;
+    camera.mousePos.deltaPosX = camera.mousePos.posX - camera.mousePos.lastPosX;
+    camera.mousePos.deltaPosY = camera.mousePos.posY - camera.mousePos.lastPosY;
+
+    double sens = camera.sensitivity * 0.001;
+    double mouseDeltaX = camera.mousePos.deltaPosX * sens;
+    double mouseDeltaY = camera.mousePos.deltaPosY * sens;
+    if (mouseDeltaX == NAN) {
+        mouseDeltaX = 0;
+    }
+    camera.yaw += mouseDeltaX;
+}
+
+void updateCamera(Camera& camera, Window& window, double deltaTime) {
+    int cursorStatus = glfwGetInputMode(window.glfwWindow, GLFW_CURSOR);
+    if (cursorStatus == GLFW_CURSOR_DISABLED) {
+        if (glfwGetKey(window.glfwWindow, GLFW_KEY_W) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_W, camera, deltaTime);
+        }
+        else  if (glfwGetKey(window.glfwWindow, GLFW_KEY_S) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_S, camera, deltaTime);
+        }
+
+        if (glfwGetKey(window.glfwWindow, GLFW_KEY_A) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_A, camera, deltaTime);
+        }
+        else  if (glfwGetKey(window.glfwWindow, GLFW_KEY_D) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_D, camera, deltaTime);
+        }
+
+        if (glfwGetKey(window.glfwWindow, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_SPACE, camera, deltaTime);
+        }
+        else  if (glfwGetKey(window.glfwWindow, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) {
+            handleMovement(GLFW_KEY_LEFT_ALT, camera, deltaTime);
+        }
+        handleMouseMovement(camera, window, deltaTime);
+    }
+}
+
 int main() {
     //Initialize TGL
     TGL::init();
@@ -13,9 +113,13 @@ int main() {
     Window window("Test Window", 1280, 720, false);
     //Display the window and create a surface to render on
     window.create();
+    glfwSetKeyCallback(window.glfwWindow, keyCallback);
+    glfwSetCursorPosCallback(window.glfwWindow, mouseCallback);
     //Create renderer
     Renderer renderer(&window);
     renderer.init();
+    Light light;
+    light.position = {0, 0, 2};
     Entity dragon;
     dragon.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {0, 1, 0, 1});
     dragon.position.z -= 2;
@@ -35,13 +139,21 @@ int main() {
     std::cout << "GPU TYPE: " << gpu.type << std::endl;
     //Keep checking if the user hasn't requested to close the window.
     double startTime = glfwGetTime();
-    Camera camera{{0,0, -3}};
+    Camera camera{};
+    camera.farClipPlane = 100;
+    camera.fov = 80;
+    camera.nearClipPlane = 0.1f;
+    double deltaTime, lastFrameTime;
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
         window.updateEvents();
         renderer.registerEntity(dragon);
         renderer.registerEntity(dragon2);
-        renderer.render(camera);
+        renderer.render(camera, light);
+        updateCamera(camera, window, deltaTime);
+        double now = glfwGetTime() * 1000;
+        deltaTime = (now - lastFrameTime) / 1000.0;
+        lastFrameTime = now;
     }
     //Destroy the renderer
     renderer.destroy();

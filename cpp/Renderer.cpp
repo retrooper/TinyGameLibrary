@@ -253,7 +253,7 @@ namespace tgl {
                                                    vkViewport, vkScissor,
                                                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                    VK_POLYGON_MODE_FILL,
-                                                   VK_CULL_MODE_NONE,
+                                                   VK_CULL_MODE_BACK_BIT,
                                                    VK_FRONT_FACE_CLOCKWISE, true, true);
 
 
@@ -291,7 +291,7 @@ namespace tgl {
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
                                 &mesh.vertexBuffer.vkBuffer, &mesh.vertexBuffer.allocation, nullptr),
-                "Failed to create a buffer for a mesh!");
+                "Failed to create a vertex buffer for a mesh!");
 
         vkBufferCreateInfo.size = mesh.indices.size() * sizeof(uint32_t);
         vkBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -300,11 +300,22 @@ namespace tgl {
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
                                 &mesh.indexBuffer.vkBuffer, &mesh.indexBuffer.allocation, nullptr),
-                "Failed to create a buffer for a mesh!");
+                "Failed to create an index for a mesh!");
+
+        vkBufferCreateInfo.size = mesh.indices.size() * sizeof(MeshData);
+        vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+        VK_HANDLE_ERROR(
+                vmaCreateBuffer(allocator, &vkBufferCreateInfo,
+                                &vmaAllocationCreateInfo,
+                                &mesh.meshDataBuffer.vkBuffer, &mesh.meshDataBuffer.allocation, nullptr),
+                                "Failed to create a mesh data buffer!"
+                )
 
         DeletionQueue::queue([=]() {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.vkBuffer, mesh.vertexBuffer.allocation);
             vmaDestroyBuffer(allocator, mesh.indexBuffer.vkBuffer, mesh.indexBuffer.allocation);
+            vmaDestroyBuffer(allocator, mesh.meshDataBuffer.vkBuffer, mesh.meshDataBuffer.allocation);
         });
 
         //Converted our vertices data into GPU readable data
@@ -316,6 +327,29 @@ namespace tgl {
         vmaMapMemory(allocator, mesh.indexBuffer.allocation, &data);
         memcpy(data, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
         vmaUnmapMemory(allocator, mesh.indexBuffer.allocation);
+
+        VkDescriptorBufferInfo vkDescriptorBufferInfo;
+        vkDescriptorBufferInfo.buffer = mesh.meshDataBuffer.vkBuffer;
+        vkDescriptorBufferInfo.offset = 0; //Whole buffer
+        vkDescriptorBufferInfo.range = sizeof(mesh.data);
+
+        VkWriteDescriptorSet vkWriteDescriptorSet;
+        vkWriteDescriptorSet.pNext = nullptr;
+        vkWriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        vkWriteDescriptorSet.dstSet = pipelineBuilder.vkDescriptorSet;
+        vkWriteDescriptorSet.dstBinding = 0;//Binding to update
+        vkWriteDescriptorSet.dstArrayElement = 0;
+        vkWriteDescriptorSet.descriptorCount = 1;
+        vkWriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        vkWriteDescriptorSet.pImageInfo = nullptr;
+        vkWriteDescriptorSet.pBufferInfo = &vkDescriptorBufferInfo;
+        vkWriteDescriptorSet.pTexelBufferView = nullptr;
+        std::vector<VkWriteDescriptorSet> vkWriteDescriptorSets;
+        vkWriteDescriptorSets.reserve(1);
+        vkWriteDescriptorSets.push_back(vkWriteDescriptorSet);
+
+        vkUpdateDescriptorSets(vkLogicalDevice, vkWriteDescriptorSets.size(), vkWriteDescriptorSets.data(), 0,
+                               nullptr);
     }
 
     void Renderer::registerEntity(Entity &entity) {
@@ -328,13 +362,18 @@ namespace tgl {
 
     float frameNumber = 0;
 
-    void Renderer::render(Camera& camera) {
-        glm::mat4 view = glm::translate(glm::mat4(1.f), camera.position);
-        //camera projection
-        glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
-        projection[1][1] *= -1;
+    double to_radians(double a) {
+        return a * (M_PI / 180);
+    }
 
-        auto projView = projection * view;
+    void Renderer::render(Camera& camera, Light& light) {
+        double temp = cos((camera.pitch));
+        camera.data.view = glm::lookAt(camera.position, camera.position + glm::vec3(temp * sin(to_radians(-camera.yaw)), -temp * cos(to_radians(camera.yaw)), cos(to_radians(camera.pitch))),
+                                     glm::vec3(0.0F, 0.0F, 1.0F));
+        //camera projection
+        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float)(window->width / window->height), camera.nearClipPlane, camera.farClipPlane);
+        camera.data.projection[1][1] *= -1;
+
         int waitTimeout = 1000000000; //One second
         //wait until the GPU has finished rendering the last frame.
         VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &vkRenderFence, true, waitTimeout),
@@ -371,26 +410,31 @@ namespace tgl {
         //We don't care about the image layout yet
         vkCmdBeginRenderPass(vkMainCommandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkGraphicsPipeline);
-        for (const auto& entity : renderObjects) {
+        std::vector<CameraData> dataList;
+        dataList.push_back(camera.data);
+        dataList.reserve(1);
+        vkCmdPushConstants(vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                           sizeof(CameraData), dataList.data());
+
+        for (auto& entity : renderObjects) {
             //bind the mesh vertex buffer with offset 0
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(vkMainCommandBuffer, 0, 1, &entity.mesh.vertexBuffer.vkBuffer, &offset);
             vkCmdBindIndexBuffer(vkMainCommandBuffer, entity.mesh.indexBuffer.vkBuffer, offset, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineBuilder.vkPipelineLayout,
+                                    0, 1,
+                                    &pipelineBuilder.vkDescriptorSet, 0, nullptr);
+
             //Process push constants
             //TODO support all rotation axises
-            glm::mat4 model = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0F), entity.scale),
+            entity.mesh.data.model = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0F), entity.scale),
                                                          glm::radians(entity.rotation.x),
                                                          glm::vec3(0.0F, 0.0F, 1.0F)), entity.position);
-
-            //calculate final mesh matrix
-            glm::mat4 mesh_matrix = projView * model;
-
-            MeshPushConstants constants{};
-            constants.renderMatrix = mesh_matrix;
-
-            //upload the matrix to the GPU via pushconstants
-            vkCmdPushConstants(vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
-                               sizeof(MeshPushConstants), &constants);
+            entity.mesh.data.lightPos = light.position;
+            void* data;
+            vmaMapMemory(allocator, entity.mesh.meshDataBuffer.allocation, &data);
+            memcpy(data, &entity.mesh.data, sizeof(MeshData));
+            vmaUnmapMemory(allocator, entity.mesh.meshDataBuffer.allocation);
 
             uint32_t indexSize = entity.mesh.indices.size();
             //we can now draw the mesh
@@ -440,6 +484,8 @@ namespace tgl {
     void Renderer::destroy() {
         vkQueueWaitIdle(vkGraphicsQueue);
         DeletionQueue::flush();
+        vkDestroyDescriptorSetLayout(vkLogicalDevice, pipelineBuilder.vkDescriptorSetLayout, nullptr);
+        vkDestroyDescriptorPool(vkLogicalDevice, pipelineBuilder.vkDescriptorPool, nullptr);
         vkDestroySemaphore(vkLogicalDevice, vkRenderSemaphore, nullptr);
         vkDestroySemaphore(vkLogicalDevice, vkPresentSemaphore, nullptr);
         vkDestroyFence(vkLogicalDevice, vkRenderFence, nullptr);

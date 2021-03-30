@@ -3,9 +3,9 @@
 namespace tgl {
     class Window {
         friend class Renderer;
-    private:
-        GLFWwindow* glfwWindow;
     public:
+        GLFWwindow* glfwWindow;
+
         const char* title;
         int width, height;
         bool resizable;

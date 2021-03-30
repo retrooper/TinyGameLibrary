@@ -1,7 +1,8 @@
 #pragma once
 
 #include "VkUtils.h"
-#include "Mesh.h"
+#include "Camera.h"
+#include "Vertex.h"
 namespace tgl {
     class PipelineBuilder {
     public:
@@ -12,6 +13,10 @@ namespace tgl {
         VkPipelineColorBlendAttachmentState vkPipelineColorBlendAttachmentState{};
         VkPipelineMultisampleStateCreateInfo vkPipelineMultisampleStateCreateInfo{};
         VkPipelineLayout vkPipelineLayout{};
+        VkDescriptorPool vkDescriptorPool{};
+        VkDescriptorSet vkDescriptorSet{};
+        VkDescriptorSetLayout vkDescriptorSetLayout{};
+        VkDescriptorSetAllocateInfo vkDescriptorSetAllocateInfo{};
 
         PipelineBuilder() = default;
 
