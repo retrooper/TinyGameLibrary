@@ -13,7 +13,7 @@ const float lightPower = 1;
 const float screenGamma = 1;
 const vec3 lightColor = vec3(1, 0.4, 0.1);
 const vec3 specColor = vec3(1, 0.4, 0.1);
-const int mode = 1; //BLIN-PHONG = 0, PHONG = 1
+const int mode = 0; //BLIN-PHONG = 0, PHONG = 1
 void main() {
     vec3 normal = normalize(fragNormal);
     vec3 lightDir = normalize((fragLightPos - fragWorldPos));

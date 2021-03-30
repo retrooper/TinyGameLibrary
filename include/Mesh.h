@@ -11,6 +11,6 @@ namespace tgl {
         AllocatedBuffer vertexBuffer;
         AllocatedBuffer indexBuffer;
         AllocatedBuffer meshDataBuffer;
-        VkWriteDescriptorSet vkWriteDescriptorSet;
+        volatile bool uploaded = false;
     };
 }

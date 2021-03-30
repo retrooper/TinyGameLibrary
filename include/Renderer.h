@@ -8,12 +8,11 @@
 #include "DeletionQueue.h"
 #include "AllocatedImage.h"
 #include "Camera.h"
-#include "RenderObject.h"
 #include "Light.h"
 #include "MeshData.h"
 #include <glm/gtx/transform.hpp>
 #include <cstring>
-#include <math.h>
+#include <cmath>
 #define TGL_LOGGER_ENABLED
 namespace tgl {
     class Renderer {
@@ -67,9 +66,7 @@ namespace tgl {
         AllocatedImage depthImage;
         VkImageView depthImageView;
 
-        std::vector<Entity> renderObjects;
-        std::unordered_map<uint32_t, Material> materialMap;
-        std::unordered_map<uint32_t, Mesh> meshMap;
+        std::vector<Entity> entities;
 
 
         void prepareVulkan();
@@ -97,21 +94,13 @@ namespace tgl {
 
         void init();
 
-        Material *createMaterial(VkPipeline vkPipeline, VkPipelineLayout vkPipelineLayout, const uint32_t &id);
-
-        std::optional<Material *> getMaterial(const uint32_t &id);
-
-        std::optional<Mesh *> getMesh(const uint32_t &id);
-
         void uploadMesh(Mesh &mesh);
-
-        void registerMesh(Mesh& mesh, const uint32_t& id);
 
         void registerEntity(Entity& entity);
 
-        void render(Camera& camera, Light& light);
+        void registerEntities(std::vector<Entity>& entities);
 
-        void drawObjects(VkCommandBuffer vkCommandBuffer, RenderObject *first, uint32_t count);
+        void render(Camera& camera, Light& light);
 
         void destroy();
     };

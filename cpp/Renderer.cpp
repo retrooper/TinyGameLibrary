@@ -352,32 +352,30 @@ namespace tgl {
 
         vkUpdateDescriptorSets(vkLogicalDevice, vkWriteDescriptorSets.size(), vkWriteDescriptorSets.data(), 0,
                                nullptr);
+        mesh.uploaded = true;
     }
 
     void Renderer::registerEntity(Entity &entity) {
-        renderObjects.push_back(entity);
+        entities.push_back(entity);
     }
 
-    void Renderer::registerMesh(Mesh &mesh, const uint32_t &id) {
-        meshMap[id] = mesh;
+    void Renderer::registerEntities(std::vector<Entity> &entities) {
+        for (Entity entity : entities) {
+            registerEntity(entity);
+        }
     }
 
     float frameNumber = 0;
 
-    double to_radians(double a) {
-        return a * (M_PI / 180);
-    }
-
     void Renderer::render(Camera &camera, Light &light) {
-        glm::vec3 to;
-        to.x = cos(glm::radians(camera.pitch)) * cos(glm::radians(camera.yaw));
-        to.y = -sin(glm::radians(camera.pitch));
-        to.z = cos(glm::radians(camera.pitch)) * sin(glm::radians(camera.yaw));
-        to = glm::normalize(to);
-        camera.data.view = glm::lookAt(camera.position, camera.position + to,
-                                       glm::vec3(0.0F, 1.0F, 0.0F));
+        glm::mat4 cameraTranslation = glm::translate(camera.position);
+        glm::vec3 axisX = {1, 0, 0};
+        glm::vec3 axisY = {0, 1, 0};
+        glm::mat4 rotationX = glm::rotate(camera.pitch, axisX);
+        glm::mat4 rotationY = glm::rotate(camera.yaw, axisY);
+        camera.data.view = glm::inverse(cameraTranslation * rotationX * rotationY);
         //camera projection
-        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float)window->width / (float)window->height,
+        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float) window->width / (float) window->height,
                                                   camera.nearClipPlane, camera.farClipPlane);
         camera.data.projection[1][1] *= -1;
 
@@ -423,7 +421,7 @@ namespace tgl {
         vkCmdPushConstants(vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(CameraData), dataList.data());
 
-        for (auto &entity : renderObjects) {
+        for (auto &entity : entities) {
             //bind the mesh vertex buffer with offset 0
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(vkMainCommandBuffer, 0, 1, &entity.mesh.vertexBuffer.vkBuffer, &offset);
@@ -486,7 +484,7 @@ namespace tgl {
         VK_HANDLE_ERROR(vkQueuePresentKHR(vkGraphicsQueue, &vkPresentInfo),
                         "Failed to present an image to the screen!");
         frameNumber++;
-        renderObjects.clear();
+        entities.clear();
     }
 
     void Renderer::destroy() {
@@ -509,28 +507,5 @@ namespace tgl {
         vkDestroySurfaceKHR(vkInstance, vkSurface, nullptr);
         vkb::destroy_debug_utils_messenger(vkInstance, vkDebugUtilsMessenger, nullptr);
         vkDestroyInstance(vkInstance, nullptr);
-    }
-
-    Material *Renderer::createMaterial(VkPipeline vkPipeline, VkPipelineLayout vkPipelineLayout, const uint32_t &id) {
-        materialMap[id] = {vkPipeline, vkPipelineLayout};
-        return &materialMap[id];
-    }
-
-    std::optional<Material *> Renderer::getMaterial(const uint32_t &id) {
-        if (materialMap.find(id) != materialMap.end()) {
-            return &materialMap[id];
-        }
-        return std::nullopt;
-    }
-
-    std::optional<Mesh *> Renderer::getMesh(const uint32_t &id) {
-        if (meshMap.find(id) != meshMap.end()) {
-            return &meshMap[id];
-        }
-        return std::nullopt;
-    }
-
-    void Renderer::drawObjects(VkCommandBuffer vkCommandBuffer, RenderObject *first, uint32_t count) {
-
     }
 }

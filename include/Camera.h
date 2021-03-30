@@ -10,6 +10,7 @@ namespace tgl {
     };
     class Camera {
     public:
+        glm::vec3 cameraFront;
         glm::vec3 position;
         float yaw, pitch;
         MousePos mousePos;
