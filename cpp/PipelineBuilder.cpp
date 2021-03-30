@@ -4,7 +4,7 @@ namespace tgl {
     VkPipeline PipelineBuilder::build(VkDevice &vkLogicalDevice, VkRenderPass &vkRenderPass, VkShaderModule &vkVertexShaderModule,
             VkShaderModule &vkFragmentShaderModule, VkViewport& vkViewport, VkRect2D& vkScissor, VkPrimitiveTopology vkTopology,
     VkPolygonMode vkPolygonMode,
-            VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace) {
+            VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace, bool depthTestEnable, bool depthWriteEnable) {
         VkPipelineShaderStageCreateInfo vkPipelineShaderStageVertexCreateInfo{};
         vkPipelineShaderStageVertexCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vkPipelineShaderStageVertexCreateInfo.pName = "main"; //Entry point
@@ -82,6 +82,15 @@ namespace tgl {
         vkPipelineLayoutCreateInfo.pPushConstantRanges = &vkPushConstantRange;
         VK_HANDLE_ERROR(vkCreatePipelineLayout(vkLogicalDevice, &vkPipelineLayoutCreateInfo, nullptr, &vkPipelineLayout), "Failed to create a pipeline layout!");
 
+        VkPipelineDepthStencilStateCreateInfo vkPipelineDepthStencilStateCreateInfo{};
+        vkPipelineDepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        vkPipelineDepthStencilStateCreateInfo.depthTestEnable = depthTestEnable ? VK_TRUE : VK_FALSE;
+        vkPipelineDepthStencilStateCreateInfo.depthWriteEnable = depthWriteEnable ? VK_TRUE : VK_FALSE;
+        vkPipelineDepthStencilStateCreateInfo.depthCompareOp = depthTestEnable ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS;
+        vkPipelineDepthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+        vkPipelineDepthStencilStateCreateInfo.minDepthBounds = 0.0f;
+        vkPipelineDepthStencilStateCreateInfo.maxDepthBounds = 1.0f;
+        vkPipelineDepthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
         VkGraphicsPipelineCreateInfo vkGraphicsPipelineCreateInfo{};
         vkGraphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         vkGraphicsPipelineCreateInfo.renderPass = vkRenderPass;
@@ -96,6 +105,7 @@ namespace tgl {
         vkGraphicsPipelineCreateInfo.pMultisampleState = &vkPipelineMultisampleStateCreateInfo;
         vkGraphicsPipelineCreateInfo.pColorBlendState = &vkPipelineColorBlendStateCreateInfo;
         vkGraphicsPipelineCreateInfo.layout = vkPipelineLayout;
+        vkGraphicsPipelineCreateInfo.pDepthStencilState = &vkPipelineDepthStencilStateCreateInfo;
 
         VkPipeline vkPipeline;
         VK_HANDLE_ERROR(vkCreateGraphicsPipelines(vkLogicalDevice, VK_NULL_HANDLE, 1, &vkGraphicsPipelineCreateInfo, nullptr, &vkPipeline), "Failed to create the graphics pipeline!");

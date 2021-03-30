@@ -1,4 +1,5 @@
 #include "Vertex.h"
+
 namespace tgl {
     VertexInputDescription Vertex::getVertexDescription() {
         //Position is at location 0, Normal at location 1, color at location 2
@@ -28,5 +29,15 @@ namespace tgl {
         vertexInputDescription.attributes.push_back(colorAttribute);
 
         return vertexInputDescription;
+    }
+
+    Vertex::Vertex(glm::vec3 position, glm::vec3 normal, glm::vec4 color) {
+        this->position = position;
+        this->normal = normal;
+        this->color = color;
+    }
+
+    bool Vertex::operator==(const Vertex &b) const {
+        return position == b.position && normal == b.normal && color == b.color;
     }
 }

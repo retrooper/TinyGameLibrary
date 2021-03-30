@@ -18,6 +18,6 @@ namespace tgl {
         VkPipeline build(VkDevice &device, VkRenderPass &pass, VkShaderModule &vkVertexShaderModule,
                          VkShaderModule &vkFragmentShaderModule, VkViewport& vkViewport, VkRect2D& vkScissor, VkPrimitiveTopology vkTopology,
                          VkPolygonMode vkPolygonMode,
-                         VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace);
+                         VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace, bool depthTestEnabled, bool depthWriteEnabled);
     };
 }

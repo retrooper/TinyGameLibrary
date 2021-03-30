@@ -1,12 +1,17 @@
 #pragma once
+
 #include "Window.h"
 #include "PipelineBuilder.h"
 #include "GPU.h"
 #include "VkBootstrap.h"
-#include "Mesh.h"
+#include "Entity.h"
 #include "DeletionQueue.h"
+#include "AllocatedImage.h"
+#include "Camera.h"
+#include "RenderObject.h"
 #include <glm/gtx/transform.hpp>
 #include <cstring>
+
 #define TGL_LOGGER_ENABLED
 namespace tgl {
     class Renderer {
@@ -56,25 +61,55 @@ namespace tgl {
         PipelineBuilder pipelineBuilder;
         VkPipeline vkGraphicsPipeline{};
 
+        //Depth testing
+        AllocatedImage depthImage;
+        VkImageView depthImageView;
+
+        std::vector<Entity> renderObjects;
+        std::unordered_map<uint32_t, Material> materialMap;
+        std::unordered_map<uint32_t, Mesh> meshMap;
+
+
         void prepareVulkan();
+
         void initSwapchain();
+
         void initCommands();
+
         void initRenderpass();
+
         void initFramebuffers();
+
         void initSynchronizationStructures();
+
         void initShaders();
+
         void initGraphicsPipeline();
+
     public:
         //Chosen GPU
         GPU gpu;
-        Window* window;
-        explicit Renderer(Window* window);
+        Window *window;
+
+        explicit Renderer(Window *window);
 
         void init();
 
-        void uploadMesh(Mesh& mesh);
+        Material *createMaterial(VkPipeline vkPipeline, VkPipelineLayout vkPipelineLayout, const uint32_t &id);
 
-        void render(Mesh& mesh);
+        std::optional<Material *> getMaterial(const uint32_t &id);
+
+        std::optional<Mesh *> getMesh(const uint32_t &id);
+
+        void uploadMesh(Mesh &mesh);
+
+        void registerMesh(Mesh& mesh, const uint32_t& id);
+
+        void registerEntity(Entity& entity);
+
+        void render(Camera& camera);
+
+        void drawObjects(VkCommandBuffer vkCommandBuffer, RenderObject *first, uint32_t count);
 
         void destroy();
     };

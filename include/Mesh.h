@@ -10,6 +10,8 @@ namespace tgl {
 
     struct Mesh {
         std::vector<Vertex> vertices;
-        AllocatedBuffer allocatedBuffer;
+        std::vector<uint32_t> indices;
+        AllocatedBuffer vertexBuffer;
+        AllocatedBuffer indexBuffer;
     };
 }

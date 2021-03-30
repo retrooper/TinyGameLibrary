@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "Window.h"
 #include "TGL.h"
+#include "MeshLoader.h"
 
 using namespace tgl;
 
@@ -15,15 +16,17 @@ int main() {
     //Create renderer
     Renderer renderer(&window);
     renderer.init();
-    Mesh triangleMesh;
-    triangleMesh.vertices.resize(3);
-    triangleMesh.vertices[0].position = { 1.f, 1.f, 0.0f };
-    triangleMesh.vertices[1].position = {-1.f, 1.f, 0.0f };
-    triangleMesh.vertices[2].position = { 0.f,-1.f, 0.0f };
-    triangleMesh.vertices[0].color = { 0.f, 1.f, 0.0f, 1.0f };
-    triangleMesh.vertices[1].color = { 0.f, 1.f, 0.0f, 1.0f };
-    triangleMesh.vertices[2].color = { 0.f, 1.f, 0.0f, 1.0f };
-    renderer.uploadMesh(triangleMesh);
+    Entity dragon;
+    dragon.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {0, 1, 0, 1});
+    dragon.position.z -= 2;
+    dragon.scale = {0.5, 0.5, 0.5};
+    dragon.rotation.x = 10;
+    Entity dragon2;
+    dragon2.mesh = MeshLoader::loadObj("../resources/models/dragon.obj");
+    dragon2.scale = {0.1, 0.1, 0.1};
+    dragon2.rotation.x = 30;
+    renderer.uploadMesh(dragon.mesh);
+    renderer.uploadMesh(dragon2.mesh);
     GPU gpu = renderer.gpu;
     std::cout << "GPU NAME: " << gpu.name << std::endl;
     std::cout << "VULKAN VERSION API VERSION: " << gpu.vulkanAPIVersionSupported[0] << "."
@@ -32,11 +35,13 @@ int main() {
     std::cout << "GPU TYPE: " << gpu.type << std::endl;
     //Keep checking if the user hasn't requested to close the window.
     double startTime = glfwGetTime();
+    Camera camera{{0,0, -3}};
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
         window.updateEvents();
-       renderer.render(triangleMesh);
-       renderer.render(triangleMesh);
+        renderer.registerEntity(dragon);
+        renderer.registerEntity(dragon2);
+        renderer.render(camera);
     }
     //Destroy the renderer
     renderer.destroy();
