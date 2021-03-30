@@ -6,6 +6,7 @@
 
 using namespace tgl;
 
+Camera camera;
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         int cursorStatus = glfwGetInputMode(window, GLFW_CURSOR);
@@ -19,8 +20,29 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
     }
 }
 
-static void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+static void mouseCallback(GLFWwindow* window, double posX, double posY) {
+    int cursorStatus = glfwGetInputMode(window, GLFW_CURSOR);
+    if (cursorStatus == GLFW_CURSOR_DISABLED) {
+        if (camera.mousePos.firstRotation) {
+            camera.mousePos.lastPosX = posX;
+            camera.mousePos.lastPosY = posY;
+            camera.mousePos.firstRotation = false;
+        }
+        float sens = camera.sensitivity / 1000;
+        double xOffset = (posX - camera.mousePos.lastPosX) * sens;
+        double yOffset = (posY - camera.mousePos.lastPosY) * sens;
+        camera.mousePos.lastPosX = posX;
+        camera.mousePos.lastPosY = posY;
+        camera.yaw = glm::mod(camera.yaw + (float) xOffset, 360.0f);
+        camera.pitch += (float) yOffset;
 
+        if (camera.pitch > 89.0f) {
+            camera.pitch = 89.0f;
+        }
+        if (camera.pitch < -89.0f) {
+            camera.pitch = -89.0f;
+        }
+    }
 }
 
 double to_radians(double a) {
@@ -60,25 +82,6 @@ void handleMovement(int key, Camera& camera, double deltaTime) {
     }
 }
 
-void handleMouseMovement(Camera& camera, Window& window, double deltaTime) {
-    double mousePosX, mousePosY;
-    glfwGetCursorPos(window.glfwWindow, &mousePosX, &mousePosY);
-    camera.mousePos.lastPosX = camera.mousePos.posX;
-    camera.mousePos.lastPosY = camera.mousePos.posX;
-    camera.mousePos.posX = mousePosX;
-    camera.mousePos.posY = mousePosY;
-    camera.mousePos.deltaPosX = camera.mousePos.posX - camera.mousePos.lastPosX;
-    camera.mousePos.deltaPosY = camera.mousePos.posY - camera.mousePos.lastPosY;
-
-    double sens = camera.sensitivity * 0.001;
-    double mouseDeltaX = camera.mousePos.deltaPosX * sens;
-    double mouseDeltaY = camera.mousePos.deltaPosY * sens;
-    if (mouseDeltaX == NAN) {
-        mouseDeltaX = 0;
-    }
-    camera.yaw += mouseDeltaX;
-}
-
 void updateCamera(Camera& camera, Window& window, double deltaTime) {
     int cursorStatus = glfwGetInputMode(window.glfwWindow, GLFW_CURSOR);
     if (cursorStatus == GLFW_CURSOR_DISABLED) {
@@ -102,7 +105,6 @@ void updateCamera(Camera& camera, Window& window, double deltaTime) {
         else  if (glfwGetKey(window.glfwWindow, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) {
             handleMovement(GLFW_KEY_LEFT_ALT, camera, deltaTime);
         }
-        handleMouseMovement(camera, window, deltaTime);
     }
 }
 
@@ -139,10 +141,10 @@ int main() {
     std::cout << "GPU TYPE: " << gpu.type << std::endl;
     //Keep checking if the user hasn't requested to close the window.
     double startTime = glfwGetTime();
-    Camera camera{};
     camera.farClipPlane = 100;
     camera.fov = 80;
     camera.nearClipPlane = 0.1f;
+    camera.sensitivity = 100;
     double deltaTime, lastFrameTime;
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.

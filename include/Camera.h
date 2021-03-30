@@ -6,6 +6,7 @@ namespace tgl {
         double posX, posY;
         double lastPosX, lastPosY;
         double deltaPosX, deltaPosY;
+        bool firstRotation = true;
     };
     class Camera {
     public:

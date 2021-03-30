@@ -89,20 +89,22 @@ namespace tgl {
             vkImageCreateInfo.mipLevels = 1;
             vkImageCreateInfo.arrayLayers = 1;
             vkImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-            vkImageCreateInfo.tiling= VK_IMAGE_TILING_OPTIMAL;
+            vkImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
             vkImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
             VmaAllocationCreateInfo depthImageAllocationCreateInfo{};
             depthImageAllocationCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
             depthImageAllocationCreateInfo.flags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-            VK_HANDLE_ERROR(vmaCreateImage(allocator, &vkImageCreateInfo, &depthImageAllocationCreateInfo, &depthImage.image, &depthImage.allocation, nullptr),
-                            "Failed to create the depth image!");
+            VK_HANDLE_ERROR(
+                    vmaCreateImage(allocator, &vkImageCreateInfo, &depthImageAllocationCreateInfo, &depthImage.image,
+                                   &depthImage.allocation, nullptr),
+                    "Failed to create the depth image!");
 
             VkUtils::createImageView(vkLogicalDevice, depthImage.image, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT,
-                                                      &depthImageView);
+                                     &depthImageView);
             DeletionQueue::queue([=]() {
-               vkDestroyImageView(vkLogicalDevice, depthImageView, nullptr);
-               vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
+                vkDestroyImageView(vkLogicalDevice, depthImageView, nullptr);
+                vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
             });
         } else {
             ERROR("Failed to create a swapchain! Error: " << vkbSwapchainOpt.error());
@@ -309,8 +311,8 @@ namespace tgl {
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
                                 &mesh.meshDataBuffer.vkBuffer, &mesh.meshDataBuffer.allocation, nullptr),
-                                "Failed to create a mesh data buffer!"
-                )
+                "Failed to create a mesh data buffer!"
+        )
 
         DeletionQueue::queue([=]() {
             vmaDestroyBuffer(allocator, mesh.vertexBuffer.vkBuffer, mesh.vertexBuffer.allocation);
@@ -356,7 +358,7 @@ namespace tgl {
         renderObjects.push_back(entity);
     }
 
-    void Renderer::registerMesh(Mesh &mesh, const uint32_t& id) {
+    void Renderer::registerMesh(Mesh &mesh, const uint32_t &id) {
         meshMap[id] = mesh;
     }
 
@@ -366,12 +368,17 @@ namespace tgl {
         return a * (M_PI / 180);
     }
 
-    void Renderer::render(Camera& camera, Light& light) {
-        double temp = cos((camera.pitch));
-        camera.data.view = glm::lookAt(camera.position, camera.position + glm::vec3(temp * sin(to_radians(-camera.yaw)), -temp * cos(to_radians(camera.yaw)), cos(to_radians(camera.pitch))),
-                                     glm::vec3(0.0F, 0.0F, 1.0F));
+    void Renderer::render(Camera &camera, Light &light) {
+        glm::vec3 to;
+        to.x = cos(glm::radians(camera.pitch)) * cos(glm::radians(camera.yaw));
+        to.y = -sin(glm::radians(camera.pitch));
+        to.z = cos(glm::radians(camera.pitch)) * sin(glm::radians(camera.yaw));
+        to = glm::normalize(to);
+        camera.data.view = glm::lookAt(camera.position, camera.position + to,
+                                       glm::vec3(0.0F, 1.0F, 0.0F));
         //camera projection
-        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float)(window->width / window->height), camera.nearClipPlane, camera.farClipPlane);
+        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float)window->width / (float)window->height,
+                                                  camera.nearClipPlane, camera.farClipPlane);
         camera.data.projection[1][1] *= -1;
 
         int waitTimeout = 1000000000; //One second
@@ -416,22 +423,23 @@ namespace tgl {
         vkCmdPushConstants(vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(CameraData), dataList.data());
 
-        for (auto& entity : renderObjects) {
+        for (auto &entity : renderObjects) {
             //bind the mesh vertex buffer with offset 0
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers(vkMainCommandBuffer, 0, 1, &entity.mesh.vertexBuffer.vkBuffer, &offset);
             vkCmdBindIndexBuffer(vkMainCommandBuffer, entity.mesh.indexBuffer.vkBuffer, offset, VK_INDEX_TYPE_UINT32);
-            vkCmdBindDescriptorSets(vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineBuilder.vkPipelineLayout,
+            vkCmdBindDescriptorSets(vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    pipelineBuilder.vkPipelineLayout,
                                     0, 1,
                                     &pipelineBuilder.vkDescriptorSet, 0, nullptr);
 
             //Process push constants
             //TODO support all rotation axises
             entity.mesh.data.model = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0F), entity.scale),
-                                                         glm::radians(entity.rotation.x),
-                                                         glm::vec3(0.0F, 0.0F, 1.0F)), entity.position);
+                                                                glm::radians(entity.rotation.x),
+                                                                glm::vec3(0.0F, 0.0F, 1.0F)), entity.position);
             entity.mesh.data.lightPos = light.position;
-            void* data;
+            void *data;
             vmaMapMemory(allocator, entity.mesh.meshDataBuffer.allocation, &data);
             memcpy(data, &entity.mesh.data, sizeof(MeshData));
             vmaUnmapMemory(allocator, entity.mesh.meshDataBuffer.allocation);
