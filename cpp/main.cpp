@@ -146,12 +146,12 @@ int main() {
     double deltaTime, lastFrameTime;
     Light light{};
     light.position = {0, 3, 1};
+    for (auto &e : entities) {
+        renderer.registerEntity(e);
+    }
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
         window.updateEvents();
-        for (auto &e : entities) {
-            renderer.registerEntity(e);
-        }
         renderer.render(camera, light);
         updateCamera(camera, window, deltaTime);
         double now = glfwGetTime() * 1000;

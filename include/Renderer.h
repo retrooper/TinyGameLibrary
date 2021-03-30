@@ -9,12 +9,27 @@
 #include "AllocatedImage.h"
 #include "Camera.h"
 #include "Light.h"
-#include "MeshData.h"
+#include "MeshRenderData.h"
 #include <glm/gtx/transform.hpp>
+#include <map>
 #include <cstring>
 #include <cmath>
+#include <deque>
 #define TGL_LOGGER_ENABLED
 namespace tgl {
+    struct FrameData {
+        //Vulkan synchronization structures.
+        //Wait semaphores will tell the GPU to wait for a certain semaphore to finish before executing its own task.
+        //Signal semaphores will tell the GPU to unlock a certain semaphore once its execution is finished. We must reset semaphores before using them again.
+        VkSemaphore vkPresentSemaphore{}, vkRenderSemaphore{};
+        //With fences in Vulkan we can know from the CPU when the GPU has finished a task. We can wait for fences which blocks the CPU until GPU operation finishes.
+        VkFence vkRenderFence{};
+
+        VkCommandPool vkCommandPool;
+        VkCommandBuffer vkMainCommandBuffer;
+    };
+    //Double buffering
+    constexpr unsigned int BUFFERING_AMOUNT = 2;
     class Renderer {
     private:
         //Vulkan instance
@@ -23,12 +38,12 @@ namespace tgl {
         VkDevice vkLogicalDevice{};
 
         //VMA
-        VmaAllocator allocator;
+        VmaAllocator allocator{};
 
         //Window surface
         VkSurfaceKHR vkSurface{};
 
-        VkDebugUtilsMessengerEXT vkDebugUtilsMessenger;
+        VkDebugUtilsMessengerEXT vkDebugUtilsMessenger{};
 
         //Swapchain
         VkSwapchainKHR vkSwapchain{};
@@ -39,21 +54,13 @@ namespace tgl {
         //Queue
         VkQueue vkGraphicsQueue{};
         uint8_t vkGraphicsQueueFamilyIndex{};
-        //Command pool & buffers. We send commands to the GPU through command buffers to the queue. The queue will then make sure they get executed.
-        VkCommandPool vkCommandPool{}; //Only one pool per thread is allowed. Submitting a command buffer can not be done in from two threads at the same time.
-        VkCommandBuffer vkMainCommandBuffer{}; //Main command buffer, we will use only one for now.
         //Render pass
         //The renderpass allows us to tell the GPU that we are going to send some rendering commands allowing it to optimize. Subpasses also exist to allow it to optimize even further.
         VkRenderPass vkRenderPass{};
         //Framebuffers.The framebuffer links to the images you will render to, and it’s used when starting a renderpass to set the target images for rendering.
         std::vector<VkFramebuffer> vkFramebuffers{};
 
-        //Vulkan synchronization structures.
-        //Wait semaphores will tell the GPU to wait for a certain semaphore to finish before executing its own task.
-        //Signal semaphores will tell the GPU to unlock a certain semaphore once its execution is finished. We must reset semaphores before using them again.
-        VkSemaphore vkPresentSemaphore{}, vkRenderSemaphore{};
-        //With fences in Vulkan we can know from the CPU when the GPU has finished a task. We can wait for fences which blocks the CPU until GPU operation finishes.
-        VkFence vkRenderFence{};
+        FrameData frames[BUFFERING_AMOUNT];
 
         //Shaders
         VkShaderModule vkVertexShaderModule{};
@@ -63,11 +70,12 @@ namespace tgl {
         VkPipeline vkGraphicsPipeline{};
 
         //Depth testing
-        AllocatedImage depthImage;
-        VkImageView depthImageView;
+        AllocatedImage depthImage{};
+        VkImageView depthImageView{};
 
-        std::vector<Entity> entities;
+        std::map<MeshDescription, std::deque<Entity>> entityMap;
 
+        uint32_t frameCount = 0;
 
         void prepareVulkan();
 
@@ -84,6 +92,8 @@ namespace tgl {
         void initShaders();
 
         void initGraphicsPipeline();
+
+        FrameData& getCurrentFrame();
 
     public:
         //Chosen GPU

@@ -1,15 +1,22 @@
 #pragma once
 #include "Vertex.h"
 #include "AllocatedBuffer.h"
-#include "MeshData.h"
+#include "MeshRenderData.h"
 #include <vector>
 namespace tgl {
-    struct Mesh {
+    struct MeshDescription {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
-        MeshData data;
         AllocatedBuffer vertexBuffer;
         AllocatedBuffer indexBuffer;
+
+        bool operator==(const MeshDescription& other) const;
+        bool operator<(const MeshDescription& other) const;
+    };
+
+    struct Mesh {
+        MeshDescription description;
+        MeshRenderData data;
         AllocatedBuffer meshDataBuffer;
         volatile bool uploaded = false;
     };

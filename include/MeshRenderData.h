@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 namespace tgl {
-    struct MeshData {
+    struct MeshRenderData {
         glm::mat4 model;
         glm::vec3 lightPos;
     };

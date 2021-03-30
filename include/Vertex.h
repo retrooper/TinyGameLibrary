@@ -17,6 +17,7 @@ namespace tgl {
         glm::vec4 color;
         Vertex(glm::vec3 position, glm::vec3 normal, glm::vec4 color);
         bool operator==(const Vertex &b) const;
+        bool operator!=(const Vertex &b) const;
         static VertexInputDescription getVertexDescription();
     };
 }

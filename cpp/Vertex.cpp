@@ -40,4 +40,8 @@ namespace tgl {
     bool Vertex::operator==(const Vertex &b) const {
         return position == b.position && normal == b.normal && color == b.color;
     }
+
+    bool Vertex::operator!=(const Vertex &b) const {
+        return position != b.position || normal != b.normal || color != b.color;
+    }
 }

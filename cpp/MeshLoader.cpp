@@ -41,9 +41,9 @@ namespace tgl {
                 class Vertex vertex = Vertex(pos, normal, color);
                 if (newVertices.count(vertex) == 0) {
                     newVertices[vertex] = newVertices.size();
-                    resultMesh.vertices.push_back(vertex);
+                    resultMesh.description.vertices.push_back(vertex);
                 }
-                resultMesh.indices.push_back(newVertices[vertex]);
+                resultMesh.description.indices.push_back(newVertices[vertex]);
             }
         }
 
