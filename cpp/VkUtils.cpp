@@ -111,4 +111,51 @@ namespace tgl {
                         "Failed to create an image view!");
     }
 
+    void VkUtils::submitCommandBufferImmediately(VkDevice& vkLogicalDevice, VkQueue& vkQueue, VkCommandPool& vkCommandPool, std::function<void(VkCommandBuffer &)> task) {
+        VkCommandBufferAllocateInfo vkCommandBufferAllocateInfo;
+        vkCommandBufferAllocateInfo.pNext = nullptr;
+        vkCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        vkCommandBufferAllocateInfo.commandBufferCount = 1;
+        vkCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        vkCommandBufferAllocateInfo.commandPool = vkCommandPool;
+
+        VkCommandBuffer vkCommandBuffer;
+
+        VK_HANDLE_ERROR(vkAllocateCommandBuffers(vkLogicalDevice, &vkCommandBufferAllocateInfo, &vkCommandBuffer),
+                        "Failed to allocate a command buffer.");
+
+        VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+
+        vkCommandBufferBeginInfo.pNext = nullptr;
+        vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        vkCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; //Only used once, allow drivers to optimize
+        vkCommandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+        //Begin recording
+        VK_HANDLE_ERROR(vkBeginCommandBuffer(vkCommandBuffer, &vkCommandBufferBeginInfo),
+                        "Failed to begin recording a command buffer!");
+
+        task(vkCommandBuffer);
+
+        //End recording into the command buffer
+        vkEndCommandBuffer(vkCommandBuffer);
+
+        VkSubmitInfo vkSubmitInfo;
+        vkSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        vkSubmitInfo.pNext = nullptr;
+        vkSubmitInfo.commandBufferCount = 1;
+        vkSubmitInfo.pCommandBuffers = &vkCommandBuffer;
+        vkSubmitInfo.signalSemaphoreCount = 0;
+        vkSubmitInfo.waitSemaphoreCount = 0;
+        vkSubmitInfo.pWaitSemaphores = nullptr;
+        vkSubmitInfo.pWaitDstStageMask = nullptr;
+        vkSubmitInfo.pSignalSemaphores = nullptr;
+
+        vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, VK_NULL_HANDLE);
+
+        vkQueueWaitIdle(vkQueue);
+
+        vkFreeCommandBuffers(vkLogicalDevice, vkCommandPool, 1, &vkCommandBuffer);
+    }
+
 }

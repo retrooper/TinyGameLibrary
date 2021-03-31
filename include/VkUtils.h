@@ -34,5 +34,6 @@ namespace tgl {
         static VkPresentModeKHR getOptimalPresentMode(std::vector<VkPresentModeKHR>& vkPresentModes);
         static void createImageView(VkDevice &vkLogicalDevice, VkImage &vkImage, VkFormat vkFormat,
                                            VkImageAspectFlags vkImageAspectFlags, VkImageView *vkImageView);
+        static void submitCommandBufferImmediately(VkDevice& vkLogicalDevice, VkQueue& vkQueue, VkCommandPool& vkCommandPool, std::function<void(VkCommandBuffer& vkCommandBuffer)> task);
     };
 }

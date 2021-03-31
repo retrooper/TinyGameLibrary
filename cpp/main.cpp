@@ -124,13 +124,18 @@ int main() {
     Renderer renderer(&window);
     renderer.init();
     std::deque<Entity> entities;
-    Entity entity;
-    entity.scale = {0.5, 0.5, 0.5};
-    entity.mesh = MeshLoader::loadObj("../resources/models/dragon.obj");
-    renderer.uploadMesh(entity.mesh);
-    entities.push_back(entity);
+    Entity dragon;
+    dragon.scale = {0.5, 0.5, 0.5};
+    dragon.mesh = MeshLoader::loadObj("../resources/models/dragon.obj");
+    renderer.uploadMesh(dragon.mesh);
+    entities.push_back(dragon);
 
-
+    Entity ground;
+    ground.position = {0, 0, 0};
+    ground.scale = {10, 0.1, 10};
+    ground.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {0, 1, 0, 1});
+    renderer.uploadMesh(ground.mesh);
+    entities.push_back(ground);
     GPU gpu = renderer.gpu;
     std::cout << "GPU NAME: " << gpu.name << std::endl;
     std::cout << "VULKAN VERSION API VERSION: " << gpu.vulkanAPIVersionSupported[0] << "."

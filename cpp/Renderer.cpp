@@ -289,6 +289,72 @@ namespace tgl {
         return frames[frameCount % BUFFERING_AMOUNT];
     }
 
+    void Renderer::initImGui() {
+        //1: create descriptor pool for IMGUI
+        // the size of the pool is very oversize, but it's copied from imgui demo itself.
+        VkDescriptorPoolSize pool_sizes[] =
+                {
+                        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+                        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+                        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+                        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+                        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+                        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+                };
+
+        VkDescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        pool_info.maxSets = 1000;
+        pool_info.poolSizeCount = std::size(pool_sizes);
+        pool_info.pPoolSizes = pool_sizes;
+
+        VkDescriptorPool imguiPool;
+        VK_HANDLE_ERROR(vkCreateDescriptorPool(vkLogicalDevice, &pool_info, nullptr, &imguiPool), "Failed to create an ImGui descriptor pool!");
+
+
+        // 2: initialize imgui library
+
+        //this initializes the core structures of imgui
+        ImGui::CreateContext();
+
+        //this initializes imgui for SDL
+        ImGui_ImplGlfw_InitForVulkan(window->glfwWindow, true);
+
+        //this initializes imgui for Vulkan
+        ImGui_ImplVulkan_InitInfo init_info = {};
+        init_info.Instance = vkInstance;
+        init_info.PhysicalDevice = gpu.vkPhysicalDevice;
+        init_info.Device = vkLogicalDevice;
+        init_info.Queue = vkGraphicsQueue;
+        init_info.DescriptorPool = imguiPool;
+        init_info.MinImageCount = 3;
+        init_info.ImageCount = 3;
+
+        ImGui_ImplVulkan_Init(&init_info, vkRenderPass);
+
+        VkUtils::submitCommandBufferImmediately(vkLogicalDevice,
+                                                vkGraphicsQueue,
+                                                frames[0].vkCommandPool,
+
+                                                [&](VkCommandBuffer& vkCommandBuffer) {
+            ImGui_ImplVulkan_CreateFontsTexture(vkCommandBuffer);
+        });
+
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+        DeletionQueue::queue([=]() {
+
+            vkDestroyDescriptorPool(vkLogicalDevice, imguiPool, nullptr);
+            ImGui_ImplVulkan_Shutdown();
+        });
+    }
+
     void Renderer::init() {
         prepareVulkan();
         initSwapchain();
@@ -298,6 +364,7 @@ namespace tgl {
         initSynchronizationStructures();
         initShaders();
         initGraphicsPipeline();
+        initImGui();
     }
 
     void Renderer::uploadMesh(Mesh &mesh) {
@@ -394,6 +461,15 @@ namespace tgl {
     }
 
     void Renderer::render(Camera &camera, Light &light) {
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        int fps = 100;
+        ImGui::Begin("fps");
+        ImGui::Text("Test");
+        ImGui::End();
+        ImGui::Render();
+        FrameData frameData = getCurrentFrame();
         glm::mat4 cameraTranslation = glm::translate(camera.position);
         glm::vec3 axisX = {1, 0, 0};
         glm::vec3 axisY = {0, 1, 0};
@@ -407,18 +483,17 @@ namespace tgl {
 
         int waitTimeout = 1000000000; //One second
         //wait until the GPU has finished rendering the last frame.
-        VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &getCurrentFrame().vkRenderFence, true, waitTimeout),
+        VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &frameData.vkRenderFence, true, waitTimeout),
                         "Failed to wait for render fence!");
-        VK_HANDLE_ERROR(vkResetFences(vkLogicalDevice, 1, &getCurrentFrame().vkRenderFence), "Failed to reset the render fence!");
+        VK_HANDLE_ERROR(vkResetFences(vkLogicalDevice, 1, &frameData.vkRenderFence), "Failed to reset the render fence!");
 
         uint32_t vkSwapchainImageIndex;
         VK_HANDLE_ERROR(
-                vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, waitTimeout, getCurrentFrame().vkPresentSemaphore, nullptr,
+                vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, waitTimeout, frameData.vkPresentSemaphore, nullptr,
                                       &vkSwapchainImageIndex), "Failed to acquire the next image!");
-        VK_HANDLE_ERROR(vkResetCommandBuffer(getCurrentFrame().vkMainCommandBuffer, 0), "Failed to reset the main command buffer!");
-        VkUtils::beginCommandBuffer(getCurrentFrame().vkCommandPool, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                    &getCurrentFrame().vkMainCommandBuffer);
-
+        VK_HANDLE_ERROR(vkResetCommandBuffer(frameData.vkMainCommandBuffer, 0), "Failed to reset the main command buffer!");
+        VkUtils::beginCommandBuffer(frameData.vkCommandPool, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                                    &frameData.vkMainCommandBuffer);
         //background color
         float r = 0;
         float g = 0;
@@ -439,23 +514,23 @@ namespace tgl {
         vkRenderPassBeginInfo.renderArea.offset.y = 0;
         vkRenderPassBeginInfo.renderArea.extent = vkWindowExtent;
         //We don't care about the image layout yet
-        vkCmdBeginRenderPass(getCurrentFrame().vkMainCommandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(getCurrentFrame().vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkGraphicsPipeline);
+        vkCmdBeginRenderPass(frameData.vkMainCommandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkGraphicsPipeline);
         std::vector<CameraData> dataList;
         dataList.push_back(camera.data);
         dataList.reserve(1);
-        vkCmdPushConstants(getCurrentFrame().vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+        vkCmdPushConstants(frameData.vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                            sizeof(CameraData), dataList.data());
         for (auto& it : entityMap) {
             MeshDescription meshDescription = it.first;
             VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(getCurrentFrame().vkMainCommandBuffer, 0, 1, &meshDescription.vertexBuffer.vkBuffer, &offset);
-            vkCmdBindIndexBuffer(getCurrentFrame().vkMainCommandBuffer, meshDescription.indexBuffer.vkBuffer, offset, VK_INDEX_TYPE_UINT32);
-            vkCmdBindDescriptorSets(getCurrentFrame().vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vkCmdBindVertexBuffers(frameData.vkMainCommandBuffer, 0, 1, &meshDescription.vertexBuffer.vkBuffer, &offset);
+            vkCmdBindIndexBuffer(frameData.vkMainCommandBuffer, meshDescription.indexBuffer.vkBuffer, offset, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     pipelineBuilder.vkPipelineLayout,
                                     0, 1,
                                     &pipelineBuilder.vkDescriptorSet, 0, nullptr);
-            for (Entity entity : it.second) {
+            for (Entity& entity : it.second) {
                 //TODO support rotation axes
                 entity.mesh.data.model = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0F), entity.scale),
                                                                     glm::radians(entity.rotation.x),
@@ -468,12 +543,13 @@ namespace tgl {
 
                 uint32_t indexSize = meshDescription.indices.size();
                 //we can now draw the mesh
-                vkCmdDrawIndexed(getCurrentFrame().vkMainCommandBuffer, indexSize, 1, 0, 0, 0);
+                vkCmdDrawIndexed(frameData.vkMainCommandBuffer, indexSize, 1, 0, 0, 0);
             }
         }
+        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frameData.vkMainCommandBuffer);
         //The render pass transitions the image into the format ready for display.
-        vkCmdEndRenderPass(getCurrentFrame().vkMainCommandBuffer);
-        vkEndCommandBuffer(getCurrentFrame().vkMainCommandBuffer);
+        vkCmdEndRenderPass(frameData.vkMainCommandBuffer);
+        vkEndCommandBuffer(frameData.vkMainCommandBuffer);
 
         //We can submit the command buffer to the GPU
         //prepare the submission to the queue.
@@ -483,17 +559,17 @@ namespace tgl {
         vkSubmitInfo.pNext = nullptr;
         vkSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         vkSubmitInfo.commandBufferCount = 1;
-        vkSubmitInfo.pCommandBuffers = &getCurrentFrame().vkMainCommandBuffer;
+        vkSubmitInfo.pCommandBuffers = &frameData.vkMainCommandBuffer;
         vkSubmitInfo.waitSemaphoreCount = 1;
-        vkSubmitInfo.pWaitSemaphores = &getCurrentFrame().vkPresentSemaphore;
+        vkSubmitInfo.pWaitSemaphores = &frameData.vkPresentSemaphore;
         vkSubmitInfo.signalSemaphoreCount = 1;
-        vkSubmitInfo.pSignalSemaphores = &getCurrentFrame().vkRenderSemaphore;
+        vkSubmitInfo.pSignalSemaphores = &frameData.vkRenderSemaphore;
         VkPipelineStageFlags vkPipelineStageFlags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         vkSubmitInfo.pWaitDstStageMask = &vkPipelineStageFlags;
 
         //submit command buffer to the queue and execute it.
         // _renderFence will now block until the graphic commands finish execution
-        VK_HANDLE_ERROR(vkQueueSubmit(vkGraphicsQueue, 1, &vkSubmitInfo, getCurrentFrame().vkRenderFence),
+        VK_HANDLE_ERROR(vkQueueSubmit(vkGraphicsQueue, 1, &vkSubmitInfo, frameData.vkRenderFence),
                         "Failed to submit a command buffer to the queue for execution!");
 
         //Now display the image to the screen
@@ -501,7 +577,7 @@ namespace tgl {
         vkPresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         vkPresentInfo.waitSemaphoreCount = 1;
         //Wait for the rendering to finish before we present
-        vkPresentInfo.pWaitSemaphores = &getCurrentFrame().vkRenderSemaphore;
+        vkPresentInfo.pWaitSemaphores = &frameData.vkRenderSemaphore;
         vkPresentInfo.swapchainCount = 1;
         vkPresentInfo.pSwapchains = &vkSwapchain;
         vkPresentInfo.pImageIndices = &vkSwapchainImageIndex;

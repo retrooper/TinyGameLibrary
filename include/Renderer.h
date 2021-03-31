@@ -10,6 +10,9 @@
 #include "Camera.h"
 #include "Light.h"
 #include "MeshRenderData.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 #include <glm/gtx/transform.hpp>
 #include <map>
 #include <cstring>
@@ -77,6 +80,8 @@ namespace tgl {
 
         uint32_t frameCount = 0;
 
+        ImGuiIO imGuiIO;
+
         void prepareVulkan();
 
         void initSwapchain();
@@ -92,6 +97,8 @@ namespace tgl {
         void initShaders();
 
         void initGraphicsPipeline();
+
+        void initImGui();
 
         FrameData& getCurrentFrame();
 
