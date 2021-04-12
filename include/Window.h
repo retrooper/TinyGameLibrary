@@ -11,6 +11,7 @@ namespace tgl {
         const char* title;
         int width, height;
         bool resizable;
+        Window() = default;
         Window(const char* title, int width, int height, bool resizable = false);
 
         void create();

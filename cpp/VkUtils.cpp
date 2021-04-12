@@ -106,7 +106,6 @@ namespace tgl {
         vkImageViewCreateInfo.subresourceRange.layerCount = 1;
         vkImageViewCreateInfo.subresourceRange.levelCount = 1;
         vkImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-
         VK_HANDLE_ERROR(vkCreateImageView(vkLogicalDevice, &vkImageViewCreateInfo, nullptr, vkImageView),
                         "Failed to create an image view!");
     }
@@ -158,4 +157,15 @@ namespace tgl {
         vkFreeCommandBuffers(vkLogicalDevice, vkCommandPool, 1, &vkCommandBuffer);
     }
 
+    VkSampleCountFlagBits VkUtils::getMaxUsableSampleCount(GPU &gpu) {
+       /* VkSampleCountFlags counts = gpu.vkPhysicalDeviceProperties.limits.framebufferColorSampleCounts & gpu.vkPhysicalDeviceProperties.limits.framebufferDepthSampleCounts;
+        if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+        if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+        if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+        if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+        if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+        if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+*/
+        return VK_SAMPLE_COUNT_1_BIT;
+    }
 }

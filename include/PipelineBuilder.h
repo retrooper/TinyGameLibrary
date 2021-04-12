@@ -20,7 +20,7 @@ namespace tgl {
 
         PipelineBuilder() = default;
 
-        VkPipeline build(VkDevice &device, VkRenderPass &pass, VkShaderModule &vkVertexShaderModule,
+        VkPipeline build(VkDevice &device, GPU& gpu, VkRenderPass &pass, VkShaderModule &vkVertexShaderModule,
                          VkShaderModule &vkFragmentShaderModule, VkViewport& vkViewport, VkRect2D& vkScissor, VkPrimitiveTopology vkTopology,
                          VkPolygonMode vkPolygonMode,
                          VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace, bool depthTestEnabled, bool depthWriteEnabled);

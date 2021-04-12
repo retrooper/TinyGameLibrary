@@ -1,8 +1,14 @@
 #include "Renderer.h"
 
 namespace tgl {
-    Renderer::Renderer(Window *window) {
+    Renderer::Renderer(Window *window, unsigned int bufferingAmount) {
         this->window = window;
+        this->bufferingAmount = bufferingAmount;
+        this->frames = new FrameData[bufferingAmount];
+    }
+
+    Renderer::~Renderer() {
+        delete[] frames;
     }
 
     void Renderer::prepareVulkan() {
@@ -38,10 +44,14 @@ namespace tgl {
             VK_HANDLE_ERROR(glfwCreateWindowSurface(vkInstance, window->glfwWindow, nullptr, &vkSurface),
                             "Failed to create a window surface!");
 
+            VkPhysicalDeviceFeatures vkPhysicalDeviceFeatures{};
+            vkPhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+            vkPhysicalDeviceFeatures.sampleRateShading = VK_TRUE;
             vkb::PhysicalDeviceSelector physicalDeviceSelector(vkb_inst);
             auto phys_ret = physicalDeviceSelector
                     .set_surface(vkSurface)
                     .set_desired_version(1, 0)
+                    .set_required_features(vkPhysicalDeviceFeatures)
                     .select();
             if (phys_ret.has_value()) {
                 gpu = GPU(phys_ret.value().physical_device);
@@ -51,11 +61,11 @@ namespace tgl {
 
             //Create logical device
             vkb::DeviceBuilder vkbLogicalDeviceBuilder(phys_ret.value());
-            vkb::Device vkbLogicalDevice = vkbLogicalDeviceBuilder.build().value();
+            vkb::Device vkbLogicalDevice = vkbLogicalDeviceBuilder
+                    .build().value();
             vkLogicalDevice = vkbLogicalDevice.device;
             vkGraphicsQueue = vkbLogicalDevice.get_queue(vkb::QueueType::graphics).value();
             vkGraphicsQueueFamilyIndex = vkbLogicalDevice.get_queue_index(vkb::QueueType::graphics).value();
-
             VmaAllocatorCreateInfo vmaAllocatorCreateInfo{};
             vmaAllocatorCreateInfo.instance = vkInstance;
             vmaAllocatorCreateInfo.device = vkLogicalDevice;
@@ -88,7 +98,7 @@ namespace tgl {
             vkImageCreateInfo.extent = {vkWindowExtent.width, vkWindowExtent.height, 1};
             vkImageCreateInfo.mipLevels = 1;
             vkImageCreateInfo.arrayLayers = 1;
-            vkImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            vkImageCreateInfo.samples = VkUtils::getMaxUsableSampleCount(gpu);
             vkImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
             vkImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
@@ -102,6 +112,7 @@ namespace tgl {
 
             VkUtils::createImageView(vkLogicalDevice, depthImage.image, VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT,
                                      &depthImageView);
+
             DeletionQueue::queue([=]() {
                 vkDestroyImageView(vkLogicalDevice, depthImageView, nullptr);
                 vmaDestroyImage(allocator, depthImage.image, depthImage.allocation);
@@ -118,7 +129,7 @@ namespace tgl {
         //We want to allow the resetting of individual command buffers
         vkCommandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         vkCommandPoolCreateInfo.queueFamilyIndex = vkGraphicsQueueFamilyIndex;
-        for (uint32_t i = 0; i < BUFFERING_AMOUNT; i++) {
+        for (uint32_t i = 0; i < bufferingAmount; i++) {
             VK_HANDLE_ERROR(vkCreateCommandPool(vkLogicalDevice, &vkCommandPoolCreateInfo, nullptr, &frames[i].vkCommandPool),
                             "Failed to create a command pool!");
 
@@ -201,6 +212,7 @@ namespace tgl {
 
     void Renderer::initFramebuffers() {
         VkFramebufferCreateInfo vkFramebufferCreateInfo{};
+        //vkFramebufferCreateInfo.flags = VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
         vkFramebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         vkFramebufferCreateInfo.renderPass = vkRenderPass;
         vkFramebufferCreateInfo.attachmentCount = 1;
@@ -230,7 +242,7 @@ namespace tgl {
         vkSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         vkSemaphoreCreateInfo.pNext = nullptr;
 
-      for (uint32_t i = 0; i < BUFFERING_AMOUNT; i++) {
+      for (uint32_t i = 0; i < bufferingAmount; i++) {
           VK_HANDLE_ERROR(vkCreateFence(vkLogicalDevice, &vkFenceCreateInfo, nullptr, &frames[i].vkRenderFence),
                           "Failed to create the render fence!");
           DeletionQueue::queue([=]() {
@@ -267,7 +279,7 @@ namespace tgl {
         vkScissor.extent = vkWindowExtent;
         vkScissor.offset.x = 0;
         vkScissor.offset.y = 0;
-        vkGraphicsPipeline = pipelineBuilder.build(vkLogicalDevice, vkRenderPass,
+        vkGraphicsPipeline = pipelineBuilder.build(vkLogicalDevice, gpu, vkRenderPass,
                                                    vkVertexShaderModule, vkFragmentShaderModule,
                                                    vkViewport, vkScissor,
                                                    VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -286,7 +298,7 @@ namespace tgl {
     }
 
     FrameData &Renderer::getCurrentFrame() {
-        return frames[frameCount % BUFFERING_AMOUNT];
+        return frames[frameCount % bufferingAmount];
     }
 
     void Renderer::initImGui() {
@@ -444,6 +456,7 @@ namespace tgl {
     }
 
     void Renderer::registerEntity(Entity &entity) {
+        uploadMesh(entity.mesh);
         if (entityMap.find(entity.mesh.description) != entityMap.end()) {
             entityMap[entity.mesh.description].push_back(entity);
         }
@@ -483,14 +496,15 @@ namespace tgl {
 
         int waitTimeout = 1000000000; //One second
         //wait until the GPU has finished rendering the last frame.
+        uint32_t vkSwapchainImageIndex;
+                VK_HANDLE_ERROR(
+                        vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, waitTimeout, frameData.vkPresentSemaphore, nullptr,
+                                              &vkSwapchainImageIndex), "Failed to acquire the next image!");
         VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &frameData.vkRenderFence, true, waitTimeout),
                         "Failed to wait for render fence!");
         VK_HANDLE_ERROR(vkResetFences(vkLogicalDevice, 1, &frameData.vkRenderFence), "Failed to reset the render fence!");
 
-        uint32_t vkSwapchainImageIndex;
-        VK_HANDLE_ERROR(
-                vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, waitTimeout, frameData.vkPresentSemaphore, nullptr,
-                                      &vkSwapchainImageIndex), "Failed to acquire the next image!");
+
         VK_HANDLE_ERROR(vkResetCommandBuffer(frameData.vkMainCommandBuffer, 0), "Failed to reset the main command buffer!");
         VkUtils::beginCommandBuffer(frameData.vkCommandPool, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                                     &frameData.vkMainCommandBuffer);

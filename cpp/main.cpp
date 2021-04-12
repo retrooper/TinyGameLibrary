@@ -1,14 +1,15 @@
+#include <cmath>
 #include <iostream>
 #include "Renderer.h"
 #include "Window.h"
 #include "TGL.h"
 #include "MeshLoader.h"
-#include <thread>
 #include <deque>
 
 using namespace tgl;
 
 Camera camera;
+Window window;
 
 static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
@@ -22,60 +23,45 @@ static void keyCallback(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-static void mouseCallback(GLFWwindow *window, double posX, double posY) {
-    int cursorStatus = glfwGetInputMode(window, GLFW_CURSOR);
+static void mouseCallback(GLFWwindow *glfwWindow, double posX, double posY) {
+    int cursorStatus = glfwGetInputMode(glfwWindow, GLFW_CURSOR);
     if (cursorStatus == GLFW_CURSOR_DISABLED) {
-        if (camera.mousePos.firstRotation) {
-            camera.mousePos.lastPosX = posX;
-            camera.mousePos.lastPosY = posY;
-            camera.mousePos.firstRotation = false;
-        }
-        float sens = camera.sensitivity / 1000;
-        double xOffset = (posX - camera.mousePos.lastPosX) * sens;
-        double yOffset = (posY - camera.mousePos.lastPosY) * sens;
-        camera.mousePos.lastPosX = posX;
-        camera.mousePos.lastPosY = posY;
-        camera.yaw -= (float) xOffset;
-        camera.pitch += (float) yOffset;
-
-        if (camera.pitch > 90.0f) {
-            camera.pitch = 90.0f;
-        }
-        if (camera.pitch < -90.0f) {
-            camera.pitch = -90.0f;
-        }
-
-        glm::vec3 direction;
-        direction.x = cos(glm::radians(-camera.yaw)) * cos(glm::radians(camera.pitch));//was not -camera.yaw
-        direction.y = sin(glm::radians(camera.pitch));//was not * cos(rad(camera.yaw))
-        direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-        camera.cameraFront = glm::normalize(direction);
+        double sens = camera.sensitivity / 10;
+        glm::vec2 mousePos = glm::vec2(posX / window.width, posY / window.height) * 2.0f - 1.0f;
+        camera.yaw = -mousePos.x * sens * M_PIf32;
+        camera.pitch = mousePos.y * sens * M_2_PIf32;
     }
 }
 
+glm::vec3 rot(glm::vec3 a, float angle){
+    glm::vec3 g = glm::vec3(std::cos(angle), std::sin(angle), 0);
+    return glm::vec3(a.x*g.x - a.y*g.y, a.x*g.y + a.y*g.x, 0);
+}
+
 void handleMovement(int key, Camera &camera, double deltaTime) {
-    double yaw = glm::radians(camera.yaw);
-    double frontSpeed = 1;
-    double backSpeed = 1;
-    double leftSpeed = 1;
-    double rightSpeed = 1;
-    double upSpeed = 1;
-    double downSpeed = 1;
-    glm::vec3 forwardVec = {sin(-yaw) * frontSpeed * deltaTime, -cos(yaw) * frontSpeed * deltaTime, 0};
+    double frontSpeed = 2;
+    double backSpeed = 2;
+    double leftSpeed = 2;
+    double rightSpeed = 2;
+    double upSpeed = 2;
+    double downSpeed = 2;
+    glm::vec3 deltaTimeVec = {deltaTime, deltaTime, deltaTime};
     switch (key) {
         case GLFW_KEY_W:
-            camera.position += forwardVec;
+            deltaTimeVec *= glm::vec3(frontSpeed, frontSpeed, frontSpeed);
+            camera.position += rot(camera.forward, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_S:
-            camera.position += forwardVec * glm::vec3(-1, -1, -1);
+            deltaTimeVec *= glm::vec3(backSpeed, backSpeed, backSpeed);
+            camera.position += rot(camera.back, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_A:
-            camera.position.x -= forwardVec.y;
-            camera.position.y += forwardVec.x;
+            deltaTimeVec *= glm::vec3(leftSpeed, leftSpeed, leftSpeed);
+            camera.position += rot(camera.left, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_D:
-            camera.position.x += forwardVec.y;
-            camera.position.y -= forwardVec.x;
+            deltaTimeVec *= glm::vec3(rightSpeed, rightSpeed, rightSpeed);
+            camera.position += rot(camera.right, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_SPACE:
             camera.position.z += upSpeed * deltaTime;
@@ -115,27 +101,19 @@ int main() {
     //Initialize TGL
     TGL::init();
     //Create window
-    Window window("Test Window", 1280, 720, false);
+    window = Window("Test Window", 800, 600, false);
     //Display the window and create a surface to render on
     window.create();
     glfwSetKeyCallback(window.glfwWindow, keyCallback);
     glfwSetCursorPosCallback(window.glfwWindow, mouseCallback);
     //Create renderer
-    Renderer renderer(&window);
+    Renderer renderer(&window, 3);
     renderer.init();
     std::deque<Entity> entities;
     Entity dragon;
-    dragon.scale = {0.5, 0.5, 0.5};
-    dragon.mesh = MeshLoader::loadObj("../resources/models/dragon.obj");
-    renderer.uploadMesh(dragon.mesh);
+    dragon.scale = {0.05, 0.05, 0.05};
+    dragon.mesh = MeshLoader::loadObj("../resources/models/IronMan.obj");
     entities.push_back(dragon);
-
-    Entity ground;
-    ground.position = {0, 0, 0};
-    ground.scale = {10, 0.1, 10};
-    ground.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {0, 1, 0, 1});
-    renderer.uploadMesh(ground.mesh);
-    entities.push_back(ground);
     GPU gpu = renderer.gpu;
     std::cout << "GPU NAME: " << gpu.name << std::endl;
     std::cout << "VULKAN VERSION API VERSION: " << gpu.vulkanAPIVersionSupported[0] << "."
@@ -143,14 +121,13 @@ int main() {
     std::cout << "GPU DRIVER VERSION: " << gpu.driverVersion << std::endl;
     std::cout << "GPU TYPE: " << gpu.type << std::endl;
     //Keep checking if the user hasn't requested to close the window.
-    double startTime = glfwGetTime();
     camera.farClipPlane = 100;
     camera.fov = 80;
     camera.nearClipPlane = 0.1f;
     camera.sensitivity = 1;
     double deltaTime, lastFrameTime;
     Light light{};
-    light.position = {0, 3, 1};
+    light.position = {0, 3, 3};
     for (auto &e : entities) {
         renderer.registerEntity(e);
     }
@@ -162,6 +139,7 @@ int main() {
         double now = glfwGetTime() * 1000;
         deltaTime = (now - lastFrameTime) / 1000.0;
         lastFrameTime = now;
+        //std::cout << "X: " << camera.position.x << ", Y: " << camera.position.y << ", Z: " << camera.position.z << ", Pitch: " << camera.pitch << ", Yaw: " << camera.yaw << std::endl;
     }
     //Destroy the renderer
     renderer.destroy();

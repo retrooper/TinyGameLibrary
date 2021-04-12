@@ -32,7 +32,6 @@ namespace tgl {
         VkCommandBuffer vkMainCommandBuffer;
     };
     //Double buffering
-    constexpr unsigned int BUFFERING_AMOUNT = 2;
     class Renderer {
     private:
         //Vulkan instance
@@ -63,7 +62,8 @@ namespace tgl {
         //Framebuffers.The framebuffer links to the images you will render to, and it’s used when starting a renderpass to set the target images for rendering.
         std::vector<VkFramebuffer> vkFramebuffers{};
 
-        FrameData frames[BUFFERING_AMOUNT];
+        unsigned int bufferingAmount;
+        FrameData* frames;
 
         //Shaders
         VkShaderModule vkVertexShaderModule{};
@@ -78,7 +78,7 @@ namespace tgl {
 
         std::map<MeshDescription, std::deque<Entity>> entityMap;
 
-        uint32_t frameCount = 0;
+        unsigned int frameCount = 0;
 
         ImGuiIO imGuiIO;
 
@@ -102,16 +102,18 @@ namespace tgl {
 
         FrameData& getCurrentFrame();
 
+
+        void uploadMesh(Mesh &mesh);
+
     public:
         //Chosen GPU
         GPU gpu;
         Window *window;
 
-        explicit Renderer(Window *window);
+        Renderer(Window *window, unsigned int bufferingAmount);
+        ~Renderer();
 
         void init();
-
-        void uploadMesh(Mesh &mesh);
 
         void registerEntity(Entity& entity);
 

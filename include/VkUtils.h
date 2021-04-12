@@ -35,5 +35,6 @@ namespace tgl {
         static void createImageView(VkDevice &vkLogicalDevice, VkImage &vkImage, VkFormat vkFormat,
                                            VkImageAspectFlags vkImageAspectFlags, VkImageView *vkImageView);
         static void submitCommandBufferImmediately(VkDevice& vkLogicalDevice, VkQueue& vkQueue, VkCommandPool& vkCommandPool, std::function<void(VkCommandBuffer& vkCommandBuffer)> task);
+        static VkSampleCountFlagBits getMaxUsableSampleCount(GPU& gpu);
     };
 }

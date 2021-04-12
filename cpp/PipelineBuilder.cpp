@@ -1,7 +1,7 @@
 #include "PipelineBuilder.h"
 
 namespace tgl {
-    VkPipeline PipelineBuilder::build(VkDevice &vkLogicalDevice, VkRenderPass &vkRenderPass, VkShaderModule &vkVertexShaderModule,
+    VkPipeline PipelineBuilder::build(VkDevice &vkLogicalDevice, GPU& gpu, VkRenderPass &vkRenderPass, VkShaderModule &vkVertexShaderModule,
             VkShaderModule &vkFragmentShaderModule, VkViewport& vkViewport, VkRect2D& vkScissor, VkPrimitiveTopology vkTopology,
     VkPolygonMode vkPolygonMode,
             VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace, bool depthTestEnable, bool depthWriteEnable) {
@@ -46,7 +46,7 @@ namespace tgl {
 
         vkPipelineMultisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         vkPipelineMultisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
-        vkPipelineMultisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        vkPipelineMultisampleStateCreateInfo.rasterizationSamples = VkUtils::getMaxUsableSampleCount(gpu);
         vkPipelineMultisampleStateCreateInfo.minSampleShading = 1.0f;
         vkPipelineMultisampleStateCreateInfo.pSampleMask = nullptr;
         vkPipelineMultisampleStateCreateInfo.alphaToCoverageEnable = VK_FALSE;
