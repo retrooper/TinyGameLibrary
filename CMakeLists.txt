@@ -16,5 +16,15 @@ target_link_libraries(tgl Vulkan::Vulkan)
 find_package(glm REQUIRED)
 
 #Add GLFW
-add_subdirectory(thirdparty/glfw-3.3.2)
+find_package(glfw3 REQUIRED)
 target_link_libraries(tgl glfw)
+
+#Add Vk-Bootstrap
+include(FetchContent)
+FetchContent_Declare(
+        fetch_vk_bootstrap
+        GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
+        GIT_TAG        v0.3.1 #suggest using a tag so the library doesn't update whenever new commits are pushed to a branch
+)
+FetchContent_MakeAvailable(fetch_vk_bootstrap)
+target_link_libraries(tgl vk-bootstrap)

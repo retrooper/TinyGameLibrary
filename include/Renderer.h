@@ -109,6 +109,10 @@ namespace tgl {
         //Chosen GPU
         GPU gpu;
         Window *window;
+        glm::vec3 forward = {0, 1, 0};
+        glm::vec3 back = -forward;
+        glm::vec3 left = {-1, 0, 0};
+        glm::vec3 right = -left;
 
         Renderer(Window *window, unsigned int bufferingAmount);
         ~Renderer();

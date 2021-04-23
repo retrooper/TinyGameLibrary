@@ -483,12 +483,7 @@ namespace tgl {
         ImGui::End();
         ImGui::Render();
         FrameData frameData = getCurrentFrame();
-        glm::mat4 cameraTranslation = glm::translate(camera.position);
-        glm::vec3 axisX = {1, 0, 0};
-        glm::vec3 axisY = {0, 1, 0};
-        glm::mat4 rotationX = glm::rotate(camera.pitch, axisX);
-        glm::mat4 rotationY = glm::rotate(camera.yaw, axisY);
-        camera.data.view = glm::inverse(cameraTranslation * rotationX * rotationY);
+        camera.data.view = glm::lookAt(camera.position, camera.position + camera.forward, camera.up);
         //camera projection
         camera.data.projection = glm::perspective((camera.fov / 100.0F), (float) window->width / (float) window->height,
                                                   camera.nearClipPlane, camera.farClipPlane);

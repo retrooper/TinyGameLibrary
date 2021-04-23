@@ -26,19 +26,34 @@ static void keyCallback(GLFWwindow *window, int key, int scancode, int action, i
 static void mouseCallback(GLFWwindow *glfwWindow, double posX, double posY) {
     int cursorStatus = glfwGetInputMode(glfwWindow, GLFW_CURSOR);
     if (cursorStatus == GLFW_CURSOR_DISABLED) {
-        double sens = camera.sensitivity / 10;
+        double sens = camera.sensitivity;
         glm::vec2 mousePos = glm::vec2(posX / window.width, posY / window.height) * 2.0f - 1.0f;
-        camera.yaw = -mousePos.x * sens * M_PIf32;
-        camera.pitch = mousePos.y * sens * M_2_PIf32;
+        double yaw = -mousePos.x * sens * M_PI;
+        double pitch = mousePos.y * sens * M_PI_2;
+        if (pitch > M_PI_2) {
+            pitch = M_PI_2;
+        }
+        else if (pitch < -M_PI_2) {
+            pitch = -M_PI_2;
+        }
+        glm::vec3 direction;
+        direction.x = std::cos(yaw) * std::cos(pitch);
+        direction.y = std::sin(pitch);
+        direction.z = std::sin(yaw) * std::cos(pitch);
+        camera.forward = glm::normalize(direction);
+        camera.right = glm::normalize(glm::cross(camera.forward, {0, -1, 0}));
+        camera.up = glm::normalize(glm::cross(camera.right, camera.forward));
+        camera.yaw = yaw;
+        camera.pitch = pitch;
     }
 }
 
-glm::vec3 rot(glm::vec3 a, float angle){
+glm::vec3 rot(glm::vec3 a, float angle) {
     glm::vec3 g = glm::vec3(std::cos(angle), std::sin(angle), 0);
-    return glm::vec3(a.x*g.x - a.y*g.y, a.x*g.y + a.y*g.x, 0);
+    return glm::vec3(a.x * g.x - a.y * g.y, a.x * g.y + a.y * g.x, 0);
 }
 
-void handleMovement(int key, Camera &camera, double deltaTime) {
+void handleMovement(int key, Renderer &renderer, Camera &camera, double deltaTime) {
     double frontSpeed = 2;
     double backSpeed = 2;
     double leftSpeed = 2;
@@ -49,19 +64,19 @@ void handleMovement(int key, Camera &camera, double deltaTime) {
     switch (key) {
         case GLFW_KEY_W:
             deltaTimeVec *= glm::vec3(frontSpeed, frontSpeed, frontSpeed);
-            camera.position += rot(camera.forward, camera.yaw) * deltaTimeVec;
+            camera.position += rot(renderer.forward, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_S:
             deltaTimeVec *= glm::vec3(backSpeed, backSpeed, backSpeed);
-            camera.position += rot(camera.back, camera.yaw) * deltaTimeVec;
+            camera.position += rot(renderer.back, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_A:
             deltaTimeVec *= glm::vec3(leftSpeed, leftSpeed, leftSpeed);
-            camera.position += rot(camera.left, camera.yaw) * deltaTimeVec;
+            camera.position += rot(renderer.left, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_D:
             deltaTimeVec *= glm::vec3(rightSpeed, rightSpeed, rightSpeed);
-            camera.position += rot(camera.right, camera.yaw) * deltaTimeVec;
+            camera.position += rot(renderer.right, camera.yaw) * deltaTimeVec;
             break;
         case GLFW_KEY_SPACE:
             camera.position.z += upSpeed * deltaTime;
@@ -74,25 +89,25 @@ void handleMovement(int key, Camera &camera, double deltaTime) {
     }
 }
 
-void updateCamera(Camera &camera, Window &window, double deltaTime) {
+void updateCamera(Camera &camera, Window &window, Renderer &renderer, double deltaTime) {
     int cursorStatus = glfwGetInputMode(window.glfwWindow, GLFW_CURSOR);
     if (cursorStatus == GLFW_CURSOR_DISABLED) {
         if (glfwGetKey(window.glfwWindow, GLFW_KEY_W) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_W, camera, deltaTime);
+            handleMovement(GLFW_KEY_W, renderer, camera, deltaTime);
         } else if (glfwGetKey(window.glfwWindow, GLFW_KEY_S) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_S, camera, deltaTime);
+            handleMovement(GLFW_KEY_S, renderer, camera, deltaTime);
         }
 
         if (glfwGetKey(window.glfwWindow, GLFW_KEY_A) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_A, camera, deltaTime);
+            handleMovement(GLFW_KEY_A, renderer, camera, deltaTime);
         } else if (glfwGetKey(window.glfwWindow, GLFW_KEY_D) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_D, camera, deltaTime);
+            handleMovement(GLFW_KEY_D, renderer, camera, deltaTime);
         }
 
         if (glfwGetKey(window.glfwWindow, GLFW_KEY_SPACE) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_SPACE, camera, deltaTime);
+            handleMovement(GLFW_KEY_SPACE, renderer, camera, deltaTime);
         } else if (glfwGetKey(window.glfwWindow, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) {
-            handleMovement(GLFW_KEY_LEFT_ALT, camera, deltaTime);
+            handleMovement(GLFW_KEY_LEFT_ALT, renderer, camera, deltaTime);
         }
     }
 }
@@ -135,7 +150,7 @@ int main() {
         //Update the window events. We need this to detect if they requested to close the window for example.
         window.updateEvents();
         renderer.render(camera, light);
-        updateCamera(camera, window, deltaTime);
+        updateCamera(camera, window, renderer, deltaTime);
         double now = glfwGetTime() * 1000;
         deltaTime = (now - lastFrameTime) / 1000.0;
         lastFrameTime = now;
