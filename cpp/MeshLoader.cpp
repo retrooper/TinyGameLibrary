@@ -2,7 +2,7 @@
 
 namespace tgl {
      Mesh tgl::MeshLoader::loadObj(const char *filePath) {
-         return loadObj(filePath, {1, 0, 0, 1});
+         return loadObj(filePath, {0.5, 0.5, 0.5, 1});
     }
 
     Mesh tgl::MeshLoader::loadObj(const char *filePath, glm::vec4 color) {
@@ -38,6 +38,7 @@ namespace tgl {
                         vertexAttributes.normals[3 * index.normal_index + 2],
                         vertexAttributes.normals[3 * index.normal_index + 1]
                 };
+
                 class Vertex vertex = Vertex(pos, normal, color);
                 if (newVertices.count(vertex) == 0) {
                     newVertices[vertex] = newVertices.size();

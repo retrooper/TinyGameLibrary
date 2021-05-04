@@ -6,6 +6,7 @@ namespace tgl {
         this->title = title;
         this->width = width;
         this->height = height;
+        this->aspect = width / height;
         this->resizable = resizable;
         this->glfwWindow = nullptr;
     }

@@ -4,12 +4,9 @@
 namespace tgl {
     class Camera {
     public:
-        glm::vec3 position;
-        glm::vec3 forward;
-        glm::vec3 right;
-        glm::vec3 up;
-        double yaw, pitch;
-        double sensitivity = 100;
+        glm::vec3 position, forward, forwardLinear, right;
+        float pitch = 0, yaw = 0, roll = 0;
+        float sensitivity = 100.0f;
         float fov = 80;
         float nearClipPlane = 0.1f;
         float farClipPlane = 100.0f;

@@ -10,9 +10,6 @@
 #include "Camera.h"
 #include "Light.h"
 #include "MeshRenderData.h"
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_vulkan.h"
 #include <glm/gtx/transform.hpp>
 #include <map>
 #include <cstring>
@@ -63,6 +60,7 @@ namespace tgl {
         std::vector<VkFramebuffer> vkFramebuffers{};
 
         unsigned int bufferingAmount;
+        unsigned int frameCount;
         FrameData* frames;
 
         //Shaders
@@ -77,10 +75,6 @@ namespace tgl {
         VkImageView depthImageView{};
 
         std::map<MeshDescription, std::deque<Entity>> entityMap;
-
-        unsigned int frameCount = 0;
-
-        ImGuiIO imGuiIO;
 
         void prepareVulkan();
 
@@ -98,30 +92,27 @@ namespace tgl {
 
         void initGraphicsPipeline();
 
-        void initImGui();
+        void updateBuffers(Camera& camera, const Light& light);
 
         FrameData& getCurrentFrame();
-
-
-        void uploadMesh(Mesh &mesh);
 
     public:
         //Chosen GPU
         GPU gpu;
         Window *window;
-        glm::vec3 forward = {0, 1, 0};
-        glm::vec3 back = -forward;
-        glm::vec3 left = {-1, 0, 0};
-        glm::vec3 right = -left;
 
         Renderer(Window *window, unsigned int bufferingAmount);
         ~Renderer();
 
         void init();
 
+        void uploadMesh(Mesh &mesh);
+
         void registerEntity(Entity& entity);
 
         void registerEntities(std::vector<Entity>& entities);
+
+        void clearEntities();
 
         void render(Camera& camera, Light& light);
 

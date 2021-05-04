@@ -23,7 +23,6 @@ layout(binding = 0) uniform modeldata
     vec3 lightPos;
 } ModelData;
 void main() {
-    vec3 lightPos = vec3(0, 0, 2);
     vec4 worldPos = ModelData.model * vec4(position, 1);
     gl_Position = CameraData.projection * CameraData.view * worldPos;
 

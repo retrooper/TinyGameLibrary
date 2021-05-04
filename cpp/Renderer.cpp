@@ -130,8 +130,9 @@ namespace tgl {
         vkCommandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         vkCommandPoolCreateInfo.queueFamilyIndex = vkGraphicsQueueFamilyIndex;
         for (uint32_t i = 0; i < bufferingAmount; i++) {
-            VK_HANDLE_ERROR(vkCreateCommandPool(vkLogicalDevice, &vkCommandPoolCreateInfo, nullptr, &frames[i].vkCommandPool),
-                            "Failed to create a command pool!");
+            VK_HANDLE_ERROR(
+                    vkCreateCommandPool(vkLogicalDevice, &vkCommandPoolCreateInfo, nullptr, &frames[i].vkCommandPool),
+                    "Failed to create a command pool!");
 
             VkCommandBufferAllocateInfo vkCommandBufferAllocateInfo{};
             vkCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -146,7 +147,8 @@ namespace tgl {
 
 
             VK_HANDLE_ERROR(
-                    vkAllocateCommandBuffers(vkLogicalDevice, &vkCommandBufferAllocateInfo, &frames[i].vkMainCommandBuffer),
+                    vkAllocateCommandBuffers(vkLogicalDevice, &vkCommandBufferAllocateInfo,
+                                             &frames[i].vkMainCommandBuffer),
                     "Failed to allocate the main command buffer!");
             DeletionQueue::queue([=]() {
                 vkDestroyCommandPool(vkLogicalDevice, frames[i].vkCommandPool, nullptr);
@@ -242,21 +244,23 @@ namespace tgl {
         vkSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         vkSemaphoreCreateInfo.pNext = nullptr;
 
-      for (uint32_t i = 0; i < bufferingAmount; i++) {
-          VK_HANDLE_ERROR(vkCreateFence(vkLogicalDevice, &vkFenceCreateInfo, nullptr, &frames[i].vkRenderFence),
-                          "Failed to create the render fence!");
-          DeletionQueue::queue([=]() {
-             vkDestroyFence(vkLogicalDevice, frames[i].vkRenderFence, nullptr);
-          });
-          VK_HANDLE_ERROR(vkCreateSemaphore(vkLogicalDevice, &vkSemaphoreCreateInfo, nullptr, &frames[i].vkPresentSemaphore),
-                          "Failed to create a present semaphore!");
-          VK_HANDLE_ERROR(vkCreateSemaphore(vkLogicalDevice, &vkSemaphoreCreateInfo, nullptr, &frames[i].vkRenderSemaphore),
-                          "Failed to create a render semaphore!");
-          DeletionQueue::queue([=]() {
-             vkDestroySemaphore(vkLogicalDevice, frames[i].vkPresentSemaphore, nullptr);
-             vkDestroySemaphore(vkLogicalDevice, frames[i].vkRenderSemaphore, nullptr);
-          });
-      }
+        for (uint32_t i = 0; i < bufferingAmount; i++) {
+            VK_HANDLE_ERROR(vkCreateFence(vkLogicalDevice, &vkFenceCreateInfo, nullptr, &frames[i].vkRenderFence),
+                            "Failed to create the render fence!");
+            DeletionQueue::queue([=]() {
+                vkDestroyFence(vkLogicalDevice, frames[i].vkRenderFence, nullptr);
+            });
+            VK_HANDLE_ERROR(
+                    vkCreateSemaphore(vkLogicalDevice, &vkSemaphoreCreateInfo, nullptr, &frames[i].vkPresentSemaphore),
+                    "Failed to create a present semaphore!");
+            VK_HANDLE_ERROR(
+                    vkCreateSemaphore(vkLogicalDevice, &vkSemaphoreCreateInfo, nullptr, &frames[i].vkRenderSemaphore),
+                    "Failed to create a render semaphore!");
+            DeletionQueue::queue([=]() {
+                vkDestroySemaphore(vkLogicalDevice, frames[i].vkPresentSemaphore, nullptr);
+                vkDestroySemaphore(vkLogicalDevice, frames[i].vkRenderSemaphore, nullptr);
+            });
+        }
     }
 
     void Renderer::initShaders() {
@@ -297,74 +301,41 @@ namespace tgl {
 
     }
 
-    FrameData &Renderer::getCurrentFrame() {
-        return frames[frameCount % bufferingAmount];
+    void Renderer::updateBuffers(Camera& camera, const Light& light) {
+        glm::mat4 cameraTranslation = glm::translate(camera.position);
+        glm::vec3 rotAxisX = {1, 0, 0};
+        glm::vec3 rotAxisY = {0, 1, 0};
+        glm::vec3 rotAxisZ = {0, 0, 1};
+        glm::mat4 rotationX = glm::rotate(camera.pitch, rotAxisX);
+        glm::mat4 rotationY = glm::rotate(camera.yaw, rotAxisY);
+        glm::mat4 rotationZ = glm::rotate(camera.roll, rotAxisZ);
+        //camera view matrix
+        glm::mat4 camMatrix = cameraTranslation * rotationZ * rotationY * rotationX;
+        camera.data.view = glm::inverse(camMatrix);
+        camera.forward = camMatrix[2];
+        camera.right = camMatrix[0];
+        //Camera forward linear
+        camMatrix = cameraTranslation * rotationY;
+        camera.forwardLinear = camMatrix[2];
+        //camera projection
+        camera.data.projection = glm::perspectiveLH((camera.fov / 100.0F), window->aspect,
+                                                    camera.nearClipPlane, camera.farClipPlane);
+        for (auto &it : entityMap) {
+            for (Entity &entity : it.second) {
+                glm::mat4 translationMatrix = glm::translate(entity.position);
+                glm::mat4 entityRotationX = glm::rotate(entity.pitch + M_PI_2f32, rotAxisX);
+                glm::mat4 entityRotationY = glm::rotate(entity.yaw, rotAxisY);
+                glm::mat4 entityRotationZ = glm::rotate(entity.roll, rotAxisZ);
+                glm::mat4 rotationMatrix = entityRotationX * entityRotationY * entityRotationZ;
+                glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), entity.scale);
+                entity.mesh.data.model = translationMatrix * rotationMatrix * scaleMatrix;
+                entity.mesh.data.lightPos = light.position;
+            }
+        }
     }
 
-    void Renderer::initImGui() {
-        //1: create descriptor pool for IMGUI
-        // the size of the pool is very oversize, but it's copied from imgui demo itself.
-        VkDescriptorPoolSize pool_sizes[] =
-                {
-                        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-                        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-                        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-                        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-                        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-                        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-                };
-
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 1000;
-        pool_info.poolSizeCount = std::size(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-
-        VkDescriptorPool imguiPool;
-        VK_HANDLE_ERROR(vkCreateDescriptorPool(vkLogicalDevice, &pool_info, nullptr, &imguiPool), "Failed to create an ImGui descriptor pool!");
-
-
-        // 2: initialize imgui library
-
-        //this initializes the core structures of imgui
-        ImGui::CreateContext();
-
-        //this initializes imgui for SDL
-        ImGui_ImplGlfw_InitForVulkan(window->glfwWindow, true);
-
-        //this initializes imgui for Vulkan
-        ImGui_ImplVulkan_InitInfo init_info = {};
-        init_info.Instance = vkInstance;
-        init_info.PhysicalDevice = gpu.vkPhysicalDevice;
-        init_info.Device = vkLogicalDevice;
-        init_info.Queue = vkGraphicsQueue;
-        init_info.DescriptorPool = imguiPool;
-        init_info.MinImageCount = 3;
-        init_info.ImageCount = 3;
-
-        ImGui_ImplVulkan_Init(&init_info, vkRenderPass);
-
-        VkUtils::submitCommandBufferImmediately(vkLogicalDevice,
-                                                vkGraphicsQueue,
-                                                frames[0].vkCommandPool,
-
-                                                [&](VkCommandBuffer& vkCommandBuffer) {
-            ImGui_ImplVulkan_CreateFontsTexture(vkCommandBuffer);
-        });
-
-        ImGui_ImplVulkan_DestroyFontUploadObjects();
-
-        DeletionQueue::queue([=]() {
-
-            vkDestroyDescriptorPool(vkLogicalDevice, imguiPool, nullptr);
-            ImGui_ImplVulkan_Shutdown();
-        });
+    FrameData &Renderer::getCurrentFrame() {
+        return frames[frameCount % bufferingAmount];
     }
 
     void Renderer::init() {
@@ -376,7 +347,6 @@ namespace tgl {
         initSynchronizationStructures();
         initShaders();
         initGraphicsPipeline();
-        initImGui();
     }
 
     void Renderer::uploadMesh(Mesh &mesh) {
@@ -392,7 +362,8 @@ namespace tgl {
         VK_HANDLE_ERROR(
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
-                                &mesh.description.vertexBuffer.vkBuffer, &mesh.description.vertexBuffer.allocation, nullptr),
+                                &mesh.description.vertexBuffer.vkBuffer, &mesh.description.vertexBuffer.allocation,
+                                nullptr),
                 "Failed to create a vertex buffer for a mesh!");
 
         vkBufferCreateInfo.size = mesh.description.indices.size() * sizeof(uint32_t);
@@ -401,7 +372,8 @@ namespace tgl {
         VK_HANDLE_ERROR(
                 vmaCreateBuffer(allocator, &vkBufferCreateInfo,
                                 &vmaAllocationCreateInfo,
-                                &mesh.description.indexBuffer.vkBuffer, &mesh.description.indexBuffer.allocation, nullptr),
+                                &mesh.description.indexBuffer.vkBuffer, &mesh.description.indexBuffer.allocation,
+                                nullptr),
                 "Failed to create an index for a mesh!");
 
         vkBufferCreateInfo.size = mesh.description.indices.size() * sizeof(MeshRenderData);
@@ -415,7 +387,8 @@ namespace tgl {
         )
 
         DeletionQueue::queue([=]() {
-            vmaDestroyBuffer(allocator, mesh.description.vertexBuffer.vkBuffer, mesh.description.vertexBuffer.allocation);
+            vmaDestroyBuffer(allocator, mesh.description.vertexBuffer.vkBuffer,
+                             mesh.description.vertexBuffer.allocation);
             vmaDestroyBuffer(allocator, mesh.description.indexBuffer.vkBuffer, mesh.description.indexBuffer.allocation);
             vmaDestroyBuffer(allocator, mesh.meshDataBuffer.vkBuffer, mesh.meshDataBuffer.allocation);
         });
@@ -456,11 +429,9 @@ namespace tgl {
     }
 
     void Renderer::registerEntity(Entity &entity) {
-        uploadMesh(entity.mesh);
         if (entityMap.find(entity.mesh.description) != entityMap.end()) {
             entityMap[entity.mesh.description].push_back(entity);
-        }
-        else {
+        } else {
             std::deque<Entity> newEntityQueue;
             newEntityQueue.push_back(entity);
             entityMap[entity.mesh.description] = newEntityQueue;
@@ -473,34 +444,31 @@ namespace tgl {
         }
     }
 
-    void Renderer::render(Camera &camera, Light &light) {
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        int fps = 100;
-        ImGui::Begin("fps");
-        ImGui::Text("Test");
-        ImGui::End();
-        ImGui::Render();
-        FrameData frameData = getCurrentFrame();
-        camera.data.view = glm::lookAt(camera.position, camera.position + camera.forward, camera.up);
-        //camera projection
-        camera.data.projection = glm::perspective((camera.fov / 100.0F), (float) window->width / (float) window->height,
-                                                  camera.nearClipPlane, camera.farClipPlane);
-        camera.data.projection[1][1] *= -1;
+    void Renderer::clearEntities() {
+        entityMap.clear();
+    }
 
-        int waitTimeout = 1000000000; //One second
+    void Renderer::render(Camera &camera, Light &light) {
+        FrameData frameData = getCurrentFrame();
+
         //wait until the GPU has finished rendering the last frame.
         uint32_t vkSwapchainImageIndex;
-                VK_HANDLE_ERROR(
-                        vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, waitTimeout, frameData.vkPresentSemaphore, nullptr,
-                                              &vkSwapchainImageIndex), "Failed to acquire the next image!");
-        VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &frameData.vkRenderFence, true, waitTimeout),
+        VK_HANDLE_ERROR(
+                vkAcquireNextImageKHR(vkLogicalDevice, vkSwapchain, 1000000000, frameData.vkPresentSemaphore, nullptr,
+                                      &vkSwapchainImageIndex), "Failed to acquire the next image!");
+        VK_HANDLE_ERROR(vkWaitForFences(vkLogicalDevice, 1, &frameData.vkRenderFence, true, 1000000000),
                         "Failed to wait for render fence!");
-        VK_HANDLE_ERROR(vkResetFences(vkLogicalDevice, 1, &frameData.vkRenderFence), "Failed to reset the render fence!");
+        VK_HANDLE_ERROR(vkResetFences(vkLogicalDevice, 1, &frameData.vkRenderFence),
+                        "Failed to reset the render fence!");
 
+        /**
+         * UPDATE BUFFERS
+         */
+        updateBuffers(camera, light);
 
-        VK_HANDLE_ERROR(vkResetCommandBuffer(frameData.vkMainCommandBuffer, 0), "Failed to reset the main command buffer!");
+        VK_HANDLE_ERROR(vkResetCommandBuffer(frameData.vkMainCommandBuffer, 0),
+                        "Failed to reset the main command buffer!");
+
         VkUtils::beginCommandBuffer(frameData.vkCommandPool, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                                     &frameData.vkMainCommandBuffer);
         //background color
@@ -522,40 +490,40 @@ namespace tgl {
         vkRenderPassBeginInfo.renderArea.offset.x = 0;
         vkRenderPassBeginInfo.renderArea.offset.y = 0;
         vkRenderPassBeginInfo.renderArea.extent = vkWindowExtent;
+
         //We don't care about the image layout yet
         vkCmdBeginRenderPass(frameData.vkMainCommandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkGraphicsPipeline);
         std::vector<CameraData> dataList;
         dataList.push_back(camera.data);
         dataList.reserve(1);
-        vkCmdPushConstants(frameData.vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+
+        vkCmdPushConstants(frameData.vkMainCommandBuffer, pipelineBuilder.vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+                           0,
                            sizeof(CameraData), dataList.data());
-        for (auto& it : entityMap) {
-            MeshDescription meshDescription = it.first;
+
+        for (auto &it : entityMap) {
             VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(frameData.vkMainCommandBuffer, 0, 1, &meshDescription.vertexBuffer.vkBuffer, &offset);
-            vkCmdBindIndexBuffer(frameData.vkMainCommandBuffer, meshDescription.indexBuffer.vkBuffer, offset, VK_INDEX_TYPE_UINT32);
+            MeshDescription meshDescription = it.first;
+            vkCmdBindVertexBuffers(frameData.vkMainCommandBuffer, 0, 1, &meshDescription.vertexBuffer.vkBuffer,
+                                   &offset);
+            vkCmdBindIndexBuffer(frameData.vkMainCommandBuffer, meshDescription.indexBuffer.vkBuffer, offset,
+                                 VK_INDEX_TYPE_UINT32);
             vkCmdBindDescriptorSets(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     pipelineBuilder.vkPipelineLayout,
                                     0, 1,
                                     &pipelineBuilder.vkDescriptorSet, 0, nullptr);
-            for (Entity& entity : it.second) {
-                //TODO support rotation axes
-                entity.mesh.data.model = glm::translate(glm::rotate(glm::scale(glm::mat4(1.0F), entity.scale),
-                                                                    glm::radians(entity.rotation.x),
-                                                                    glm::vec3(0.0F, 0.0F, 1.0F)), entity.position);
-                entity.mesh.data.lightPos = light.position;
+            for (Entity &entity : it.second) {
                 void *data;
                 vmaMapMemory(allocator, entity.mesh.meshDataBuffer.allocation, &data);
                 memcpy(data, &entity.mesh.data, sizeof(MeshRenderData));
                 vmaUnmapMemory(allocator, entity.mesh.meshDataBuffer.allocation);
 
                 uint32_t indexSize = meshDescription.indices.size();
-                //we can now draw the mesh
+                //we can now draw the entity
                 vkCmdDrawIndexed(frameData.vkMainCommandBuffer, indexSize, 1, 0, 0, 0);
             }
         }
-        ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frameData.vkMainCommandBuffer);
         //The render pass transitions the image into the format ready for display.
         vkCmdEndRenderPass(frameData.vkMainCommandBuffer);
         vkEndCommandBuffer(frameData.vkMainCommandBuffer);
@@ -593,7 +561,6 @@ namespace tgl {
 
         VK_HANDLE_ERROR(vkQueuePresentKHR(vkGraphicsQueue, &vkPresentInfo),
                         "Failed to present an image to the screen!");
-
         frameCount++;
     }
 

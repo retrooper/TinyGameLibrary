@@ -7,10 +7,11 @@ namespace tgl {
         this->scale = {1, 1, 1};
     }
 
-    Entity::Entity(const Mesh &mesh, glm::vec3 position, glm::vec3 rotation, glm::vec3 scale) {
+    Entity::Entity(const Mesh &mesh, glm::vec3 position, float pitch, float yaw, glm::vec3 scale) {
         this->mesh = mesh;
         this->position = position;
-        this->rotation = rotation;
+        this->pitch = pitch;
+        this->yaw = yaw;
         this->scale = scale;
     }
 }
