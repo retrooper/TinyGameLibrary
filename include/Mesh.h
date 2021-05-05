@@ -16,8 +16,8 @@ namespace tgl {
 
     struct Mesh {
         MeshDescription description;
-        MeshRenderData data;
-        AllocatedBuffer meshDataBuffer;
+        MeshRenderData data{};
+        AllocatedBuffer meshDataBuffer{};
         volatile bool uploaded = false;
     };
 }

@@ -27,7 +27,7 @@ namespace tgl {
     }
 
     bool MeshDescription::operator<(const MeshDescription &other) const {
-        return false;
+        return true;
     }
 
 }

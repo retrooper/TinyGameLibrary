@@ -2,12 +2,13 @@
 #include "Window.h"
 
 namespace tgl {
-    Window::Window(const char *title, int width, int height, bool resizable) {
+    Window::Window(const char *title, int width, int height, bool resizable, glm::vec4 backgroundColor) {
         this->title = title;
         this->width = width;
         this->height = height;
         this->aspect = width / height;
         this->resizable = resizable;
+        this->backgroundColor = backgroundColor;
         this->glfwWindow = nullptr;
     }
 

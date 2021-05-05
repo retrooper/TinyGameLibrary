@@ -301,7 +301,7 @@ namespace tgl {
 
     }
 
-    void Renderer::updateBuffers(Camera& camera, const Light& light) {
+    void Renderer::updateBuffers(Camera &camera, const Light &light) {
         glm::mat4 cameraTranslation = glm::translate(camera.position);
         glm::vec3 rotAxisX = {1, 0, 0};
         glm::vec3 rotAxisY = {0, 1, 0};
@@ -472,13 +472,10 @@ namespace tgl {
         VkUtils::beginCommandBuffer(frameData.vkCommandPool, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                                     &frameData.vkMainCommandBuffer);
         //background color
-        float r = 0;
-        float g = 0;
-        float b = 1;
-        float a = 1;
         VkClearValue vkClearValueDefault{};
         VkClearValue vkClearValues[2] = {vkClearValueDefault, vkClearValueDefault};
-        vkClearValues[0].color = {{r, g, b, a}};
+        vkClearValues[0].color = {{window->backgroundColor.r, window->backgroundColor.g,
+                                          window->backgroundColor.b, window->backgroundColor.a}};
         vkClearValues[1].depthStencil.depth = 1.0f;
 
         VkRenderPassBeginInfo vkRenderPassBeginInfo{};
@@ -493,6 +490,8 @@ namespace tgl {
 
         //We don't care about the image layout yet
         vkCmdBeginRenderPass(frameData.vkMainCommandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
         vkCmdBindPipeline(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkGraphicsPipeline);
         std::vector<CameraData> dataList;
         dataList.push_back(camera.data);
@@ -504,10 +503,9 @@ namespace tgl {
 
         for (auto &it : entityMap) {
             VkDeviceSize offset = 0;
-            MeshDescription meshDescription = it.first;
-            vkCmdBindVertexBuffers(frameData.vkMainCommandBuffer, 0, 1, &meshDescription.vertexBuffer.vkBuffer,
+            vkCmdBindVertexBuffers(frameData.vkMainCommandBuffer, 0, 1, &it.first.vertexBuffer.vkBuffer,
                                    &offset);
-            vkCmdBindIndexBuffer(frameData.vkMainCommandBuffer, meshDescription.indexBuffer.vkBuffer, offset,
+            vkCmdBindIndexBuffer(frameData.vkMainCommandBuffer, it.first.indexBuffer.vkBuffer, offset,
                                  VK_INDEX_TYPE_UINT32);
             vkCmdBindDescriptorSets(frameData.vkMainCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     pipelineBuilder.vkPipelineLayout,
@@ -519,7 +517,7 @@ namespace tgl {
                 memcpy(data, &entity.mesh.data, sizeof(MeshRenderData));
                 vmaUnmapMemory(allocator, entity.mesh.meshDataBuffer.allocation);
 
-                uint32_t indexSize = meshDescription.indices.size();
+                uint32_t indexSize = it.first.indices.size();
                 //we can now draw the entity
                 vkCmdDrawIndexed(frameData.vkMainCommandBuffer, indexSize, 1, 0, 0, 0);
             }
