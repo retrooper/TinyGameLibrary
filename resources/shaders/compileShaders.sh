@@ -1,3 +1,3 @@
 glslangValidator -V vertexShader.vert
 
-glslangValidator -V fragmentShader.frag
+glslangValidator -V anisoFragmentShader.frag

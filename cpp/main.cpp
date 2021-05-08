@@ -102,22 +102,25 @@ int main() {
     //Initialize TGL
     TGL::init();
     //Create window
-    window = Window("Test Window", 800, 600, false, {0, 0, 1, 1});
+    window = Window("Test Window", 1280, 720, false, {0, 0, 1, 1});
     //Display the window and create a surface to render on
     window.create();
     glfwSetKeyCallback(window.glfwWindow, keyCallback);
     glfwSetCursorPosCallback(window.glfwWindow, mouseCallback);
     //Create renderer
-    Renderer renderer(&window, 2);
+    Renderer renderer(&window, 3);
     renderer.init();
-    Entity porsche;
-    porsche.scale = {0.5, 0.5, 0.5};
-    porsche.mesh = MeshLoader::loadObj("../resources/models/Porsche.obj");
 
-    Entity dragon;
-    dragon.scale = {1, 1, 1};
-    dragon.mesh = MeshLoader::loadObj("../resources/models/dragon.obj", {0, 1, 0, 1});
-    dragon.position = {0, 1, 0};
+    std::vector<Entity> entities;
+    for (uint32_t i = 0; i < 2; i++) {
+        Entity entity;
+        entity.scale = {0.05, 0.05, 0.05};
+        entity.mesh = MeshLoader::loadObj("../resources/models/IronMan.obj", {1, 0, 0, 1});
+        entity.position = {i * 4, 1, i * 4};
+
+        renderer.uploadMesh(entity.mesh);
+        entities.push_back(entity);
+    }
     GPU gpu = renderer.gpu;
     std::cout << "GPU NAME: " << gpu.name << std::endl;
     std::cout << "GPU TYPE: " << gpu.type << std::endl;
@@ -134,19 +137,9 @@ int main() {
     double deltaTime, lastFrameTime;
     Light light{};
     light.position = {0, -6, 0};
-    renderer.uploadMesh(porsche.mesh);
-    renderer.uploadMesh(dragon.mesh);
-
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
-        if (glfwGetKey(window.glfwWindow, GLFW_KEY_UP) == GLFW_PRESS) {
-            dragon.scale += glm::vec3{0.1, 0.1, 0.1};
-        }
-        else  if (glfwGetKey(window.glfwWindow, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            dragon.scale -= glm::vec3{0.1, 0.1, 0.1};
-        }
-        renderer.registerEntity(porsche);
-        renderer.registerEntity(dragon);
+        renderer.registerEntities(entities);
         window.updateEvents();
         renderer.render(camera, light);
 

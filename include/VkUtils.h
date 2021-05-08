@@ -22,6 +22,7 @@
 #define VK_HANDLE_SUCCESS_AND_ERROR_NO_EXIT(vkResult, SUCCESS_MSG, ERROR_MSG) if (result == VK_SUCCESS) {  INFO(SUCCESS_MSG); } else {  ERROR_NO_EXIT(ERROR_MSG << "Error code: " << vkResult); }
 
 #include <vulkan/vulkan.h>
+#include "vk_mem_alloc.h"
 #include "GPU.h"
 namespace tgl {
     class VkUtils {
@@ -36,5 +37,6 @@ namespace tgl {
                                            VkImageAspectFlags vkImageAspectFlags, VkImageView *vkImageView);
         static void submitCommandBufferImmediately(VkDevice& vkLogicalDevice, VkQueue& vkQueue, VkCommandPool& vkCommandPool, std::function<void(VkCommandBuffer& vkCommandBuffer)> task);
         static VkSampleCountFlagBits getMaxUsableSampleCount(GPU& gpu);
+        static void createBuffer(VmaAllocator& allocator, VmaAllocation& allocation, VkBuffer& vkBuffer, VkDeviceSize size, VkBufferUsageFlagBits usage);
     };
 }

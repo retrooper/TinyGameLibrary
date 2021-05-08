@@ -27,6 +27,8 @@ namespace tgl {
 
         VkCommandPool vkCommandPool;
         VkCommandBuffer vkMainCommandBuffer;
+
+        AllocatedBuffer objectBuffer;
     };
     //Double buffering
     class Renderer {
@@ -59,22 +61,15 @@ namespace tgl {
         //Framebuffers.The framebuffer links to the images you will render to, and it’s used when starting a renderpass to set the target images for rendering.
         std::vector<VkFramebuffer> vkFramebuffers{};
 
-        unsigned int bufferingAmount;
-        unsigned int frameCount;
+        uint32_t bufferingAmount;
+        uint32_t frameCount;
         FrameData* frames;
-
-        //Shaders
-        VkShaderModule vkVertexShaderModule{};
-        VkShaderModule vkFragmentShaderModule{};
-
-        PipelineBuilder pipelineBuilder;
-        VkPipeline vkGraphicsPipeline{};
 
         //Depth testing
         AllocatedImage depthImage{};
         VkImageView depthImageView{};
 
-        std::map<MeshDescription, std::deque<Entity>> entityMap;
+        std::vector<Entity> entities;
 
         void prepareVulkan();
 
@@ -87,10 +82,6 @@ namespace tgl {
         void initFramebuffers();
 
         void initSynchronizationStructures();
-
-        void initShaders();
-
-        void initGraphicsPipeline();
 
         void updateBuffers(Camera& camera, const Light& light);
 

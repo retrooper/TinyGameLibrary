@@ -2,6 +2,7 @@
 #include "Vertex.h"
 #include "AllocatedBuffer.h"
 #include "MeshRenderData.h"
+#include "PipelineBuilder.h"
 #include <vector>
 namespace tgl {
     struct MeshDescription {
@@ -9,6 +10,10 @@ namespace tgl {
         std::vector<uint32_t> indices;
         AllocatedBuffer vertexBuffer;
         AllocatedBuffer indexBuffer;
+        VkPipeline vkPipeline;
+        PipelineBuilder pipelineBuilder;
+        VkShaderModule vkVertexShaderModule;
+        VkShaderModule vkFragmentShaderModule;
 
         bool operator==(const MeshDescription& other) const;
         bool operator<(const MeshDescription& other) const;

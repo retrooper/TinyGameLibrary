@@ -168,4 +168,22 @@ namespace tgl {
 */
         return VK_SAMPLE_COUNT_1_BIT;
     }
+
+    void
+    VkUtils::createBuffer(VmaAllocator& allocator, VmaAllocation& allocation, VkBuffer &vkBuffer, VkDeviceSize size, VkBufferUsageFlagBits usage) {
+        VkBufferCreateInfo vkBufferCreateInfo{};
+        vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        vkBufferCreateInfo.size = size;
+        vkBufferCreateInfo.usage = usage;
+
+        VmaAllocationCreateInfo vmaAllocationCreateInfo{};
+        //Allocated by the CPU, visible/readable by the GPU.
+        vmaAllocationCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        VK_HANDLE_ERROR(
+                vmaCreateBuffer(allocator, &vkBufferCreateInfo,
+                                &vmaAllocationCreateInfo,
+                                &vkBuffer, &allocation,
+                                nullptr),
+                "Failed to create a buffer!");
+    }
 }
