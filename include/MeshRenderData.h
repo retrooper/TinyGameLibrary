@@ -4,5 +4,6 @@ namespace tgl {
     struct MeshRenderData {
         glm::mat4 model;
         glm::vec3 lightPos;
+        float time;
     };
 }

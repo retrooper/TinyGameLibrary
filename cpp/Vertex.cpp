@@ -9,6 +9,7 @@ namespace tgl {
         mainBinding.stride = sizeof(Vertex);
         mainBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         vertexInputDescription.bindings.push_back(mainBinding);
+
         VkVertexInputAttributeDescription positionAttribute = {};
         positionAttribute.binding = 0;
         positionAttribute.location = 0;
@@ -24,10 +25,10 @@ namespace tgl {
         colorAttribute.location = 2;
         colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
         colorAttribute.offset = offsetof(Vertex, color);
+
         vertexInputDescription.attributes.push_back(positionAttribute);
         vertexInputDescription.attributes.push_back(normalAttribute);
         vertexInputDescription.attributes.push_back(colorAttribute);
-
         return vertexInputDescription;
     }
 

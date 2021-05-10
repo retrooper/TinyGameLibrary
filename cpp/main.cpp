@@ -112,10 +112,10 @@ int main() {
     renderer.init();
 
     std::vector<Entity> entities;
-    for (uint32_t i = 0; i < 2; i++) {
+    for (uint32_t i = 0; i < 1; i++) {
         Entity entity;
-        entity.scale = {0.05, 0.05, 0.05};
-        entity.mesh = MeshLoader::loadObj("../resources/models/IronMan.obj", {1, 0, 0, 1});
+        entity.scale = {1, 1, 1};
+        entity.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {1, 0, 0, 1});
         entity.position = {i * 4, 1, i * 4};
 
         renderer.uploadMesh(entity.mesh);

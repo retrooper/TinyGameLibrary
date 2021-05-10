@@ -283,6 +283,7 @@ namespace tgl {
         camera.data.projection = glm::perspectiveLH((camera.fov / 100.0F), window->aspect,
                                                     camera.nearClipPlane, camera.farClipPlane);
         for (Entity &entity : entities) {
+            entity.mesh.data.time = glfwGetTime() / 10;
             glm::mat4 translationMatrix = glm::translate(entity.position);
             glm::mat4 entityRotationX = glm::rotate(entity.pitch + M_PI_2f32, rotAxisX);
             glm::mat4 entityRotationY = glm::rotate(entity.yaw, rotAxisY);
