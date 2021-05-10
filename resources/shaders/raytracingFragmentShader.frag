@@ -8,6 +8,7 @@ layout(location = 2) in vec3 fragViewVec;
 layout(location = 3) in vec3 fragLightPos;
 layout(location = 4) in vec3 fragWorldPos;
 layout(location = 5) in float time;
+layout(location = 6) in vec3 cameraPos;
 
 const vec2 iResolution = vec2(1280, 720);
 #define MAX_BOUNCES 2
@@ -18,8 +19,8 @@ float gamma = 2.2;
 
 struct Material
 {
-    vec3 c;		// diffuse color
-    float f0;	// specular color (monochrome)
+    vec3 c;// diffuse color
+    float f0;// specular color (monochrome)
 };
 
 // ---8<----------------------------------------------------------------------
@@ -30,39 +31,39 @@ float hash(float x) { return fract(sin(x) * 43758.5453); }
 
 struct Ray
 {
-    vec3 o;		// origin
-    vec3 d;		// direction
+    vec3 o;// origin
+    vec3 d;// direction
 };
 
 struct Hit
 {
-    float t;	// solution to p=o+t*d
-    vec3 n;		// normal
-    Material m;	// material
+    float t;// solution to p=o+t*d
+    vec3 n;// normal
+    Material m;// material
 };
 const Hit noHit = Hit(1e10, vec3(0.), Material(vec3(-1.), -1.));
 
 struct Plane
 {
-    float d;	// solution to dot(n,p)+d=0
-    vec3 n;		// normal
-    Material m;	// material
+    float d;// solution to dot(n,p)+d=0
+    vec3 n;// normal
+    Material m;// material
 };
 
 struct Sphere
 {
-    float r;	// radius
-    vec3 p;		// center position
-    Material m;	// material
+    float r;// radius
+    vec3 p;// center position
+    Material m;// material
 };
 
 struct Cone
 {
-    float cosa;	// half cone angle
-    float h;	// height
-    vec3 c;		// tip position
-    vec3 v;		// axis
-    Material m;	// material
+    float cosa;// half cone angle
+    float h;// height
+    vec3 c;// tip position
+    vec3 v;// axis
+    Material m;// material
 };
 
 Hit intersectPlane(Plane p, Ray r)
@@ -93,9 +94,9 @@ Hit intersectCone(Cone s, Ray r)
 {
     vec3 co = r.o - s.c;
 
-    float a = dot(r.d,s.v)*dot(r.d,s.v) - s.cosa*s.cosa;
-    float b = 2. * (dot(r.d,s.v)*dot(co,s.v) - dot(r.d,co)*s.cosa*s.cosa);
-    float c = dot(co,s.v)*dot(co,s.v) - dot(co,co)*s.cosa*s.cosa;
+    float a = dot(r.d, s.v)*dot(r.d, s.v) - s.cosa*s.cosa;
+    float b = 2. * (dot(r.d, s.v)*dot(co, s.v) - dot(r.d, co)*s.cosa*s.cosa);
+    float c = dot(co, s.v)*dot(co, s.v) - dot(co, co)*s.cosa*s.cosa;
 
     float det = b*b - 4.*a*c;
     if (det < 0.) return noHit;
@@ -145,9 +146,9 @@ Hit intersectScene(Ray r)
     vec3 axis = normalize(mix(axis1, axis2, fract(time)));
 
 
-    Sphere s = Sphere(1., vec3(1., 1., 0.0), Material(vec3(0.5), 0.04));
+    Sphere s = Sphere(1.0, vec3(1.0, 1.0, 0.0), Material(vec3(0.5), 0.04));
     Sphere s2 = Sphere(1.0, vec3(3.0, 3.0, 0.0), Material(vec3(0.5), 0.04));
-    Plane p  = Plane(0., vec3(0., 1., 0.0), Material(vec3(0.5, 0.4, 0.3), 0.04));
+    Plane p  = Plane(0.0, vec3(0., 1., 0.0), Material(vec3(0.5, 0.4, 0.3), 0.04));
     //float translation = 4.*abs(2.*fract(time/8.)-1.) - 2.;
     //Cone c = Cone(0.95, 2., vec3(translation, 2., 1.), -axis, Material(vec3(1., 0., 0.0), 0.02));
 
@@ -164,8 +165,8 @@ Hit intersectScene(Ray r)
 
 struct DirectionalLight
 {
-    vec3 d;		// Direction
-    vec3 c;		// Color
+    vec3 d;// Direction
+    vec3 c;// Color
 };
 
 DirectionalLight sunLight = DirectionalLight(normalize(vec3(1., .5, .5)), vec3(1e3));
@@ -183,7 +184,7 @@ float pow5(float x) { return x * x * x * x * x; }
 // Schlick approximation
 float fresnel(vec3 h, vec3 v, float f0)
 {
-    return pow5(1. - clamp(dot(h, v), 0., 1.)) * (1. - f0) + f0;
+    return pow5(1. - clamp(dot(h, v), 0.0, 1.)) * (1. - f0) + f0;
 }
 
 float epsilon = 4e-4;
@@ -192,7 +193,7 @@ vec3 accountForDirectionalLight(vec3 p, vec3 n, DirectionalLight l)
 {
     if (intersectScene(Ray(p + epsilon * l.d, l.d)).m.f0 < 0.0)
     {
-        return clamp(dot(n, l.d), 0., 1.) * l.c;
+        return clamp(dot(n, l.d), 0.0, 1.) * l.c;
     }
     return vec3(0.0);
 }
@@ -256,25 +257,24 @@ vec3 Uncharted2ToneMapping(vec3 color)
 
 void main() {
     vec2 uv = 2.0 * gl_FragCoord.xy / iResolution - 1.0;
+    uv *= -1;
 
     float o1 = 0.25;
     float o2 = 0.75;
     vec2 msaa[4];
-    msaa[0] = vec2( o1,  o2);
-    msaa[1] = vec2( o2, -o1);
+    msaa[0] = vec2(o1, o2);
+    msaa[1] = vec2(o2, -o1);
     msaa[2] = vec2(-o1, -o2);
-    msaa[3] = vec2(-o2,  o1);
+    msaa[3] = vec2(-o2, o1);
 
     vec3 color = vec3(0.0);
     for (int i = 0; i < 4; ++i)
     {
-        //CAMERA POSITION
-        vec3 camPos = vec3(5.0, 1.1, 4.);
         vec3 offset = vec3(msaa[i] / iResolution.y, 0.0);
         vec3 d = normalize(vec3(iResolution.x/iResolution.y * uv.x, uv.y, -1.5) + offset);
-        Ray r = Ray(camPos, d);
+        Ray r = Ray(cameraPos, d);
         color += radiance(r) / 4.0;
     }
 
-    outColor = vec4(Uncharted2ToneMapping(color),1.0);
+    outColor = vec4(Uncharted2ToneMapping(color), 1.0);
 }

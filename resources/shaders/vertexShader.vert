@@ -9,7 +9,7 @@ layout(location = 2) out vec3 fragViewVec;
 layout(location = 3) out vec3 fragLightPos;
 layout(location = 4) out vec3 fragWorldPos;
 layout(location = 5) out float time;
-layout(location = 6) out vec4 vertLoc;
+layout(location = 6) out vec3 cameraPos;
 layout( push_constant ) uniform constants
 {
     mat4 view;
@@ -22,6 +22,7 @@ layout(binding = 0) uniform modeldata
     mat4 model;
     vec3 lightPos;
     float time;
+    vec3 cameraPos;
 } ModelData;
 void main() {
     vec4 worldPos = ModelData.model * vec4(position, 1);
@@ -34,5 +35,6 @@ void main() {
     fragLightPos = ModelData.lightPos;
     fragWorldPos = (worldPos).xyz;
     time = ModelData.time;
-    vertLoc = gl_Position;
+    cameraPos = ModelData.cameraPos;
+    //cameraPos = vec3(5.0, 1.1, 4.0);
 }

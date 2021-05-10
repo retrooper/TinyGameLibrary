@@ -265,6 +265,7 @@ namespace tgl {
 
     void Renderer::updateBuffers(Camera &camera, const Light &light) {
         glm::mat4 cameraTranslation = glm::translate(camera.position);
+        std::cout << "CAMERA POS: {" << camera.position.x << ", " << camera.position.y << ", " << camera.position.z << "}" << std::endl;
         glm::vec3 rotAxisX = {1, 0, 0};
         glm::vec3 rotAxisY = {0, 1, 0};
         glm::vec3 rotAxisZ = {0, 0, 1};
@@ -283,7 +284,9 @@ namespace tgl {
         camera.data.projection = glm::perspectiveLH((camera.fov / 100.0F), window->aspect,
                                                     camera.nearClipPlane, camera.farClipPlane);
         for (Entity &entity : entities) {
-            entity.mesh.data.time = glfwGetTime() / 10;
+            entity.mesh.data.time = 10.0f;
+            glm::vec3 cameraPosition = camera.position;
+            entity.mesh.data.cameraPos = cameraPosition;
             glm::mat4 translationMatrix = glm::translate(entity.position);
             glm::mat4 entityRotationX = glm::rotate(entity.pitch + M_PI_2f32, rotAxisX);
             glm::mat4 entityRotationY = glm::rotate(entity.yaw, rotAxisY);

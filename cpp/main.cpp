@@ -126,14 +126,6 @@ int main() {
         entity.mesh.description.vertices.push_back(Vertex({-1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
         //bottom right - 3
         entity.mesh.description.vertices.push_back(Vertex({1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));;
-        /*
-        entity.mesh.description.indices.push_back(0);
-        entity.mesh.description.indices.push_back(1);
-        entity.mesh.description.indices.push_back(2);
-        entity.mesh.description.indices.push_back(2);
-        entity.mesh.description.indices.push_back(1);
-        entity.mesh.description.indices.push_back(3);
-         */
         entity.mesh.description.indices = {2, 0, 3, 0, 1, 3};
         renderer.uploadMesh(entity.mesh);
         entities.push_back(entity);
@@ -148,7 +140,7 @@ int main() {
     camera.farClipPlane = 100;
     camera.nearClipPlane = 0.1f;
     camera.fov = 80;
-    camera.position = {0, 0, 0};
+    camera.position = {5.0, 1.1, 4.0};
 
     camera.sensitivity = 1;
     double deltaTime, lastFrameTime;
@@ -159,7 +151,6 @@ int main() {
         renderer.registerEntities(entities);
         window.updateEvents();
         renderer.render(camera, light);
-
         renderer.clearEntities();
         updateCamera(camera, window, renderer, deltaTime);
         double now = glfwGetTime() * 1000;
