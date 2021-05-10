@@ -36,5 +36,5 @@ void main() {
     fragWorldPos = (worldPos).xyz;
     time = ModelData.time;
     cameraPos = ModelData.cameraPos;
-    //cameraPos = vec3(5.0, 1.1, 4.0);
+    //cameraPos = vec3(3.0, 1.1, 4.0);
 }

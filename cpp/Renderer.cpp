@@ -275,8 +275,8 @@ namespace tgl {
         //camera view matrix
         glm::mat4 camMatrix = cameraTranslation * rotationZ * rotationY * rotationX;
         camera.data.view = glm::inverse(camMatrix);
+        camera.right = -camMatrix[1];
         camera.forward = camMatrix[2];
-        camera.right = camMatrix[0];
         //Camera forward linear
         camMatrix = cameraTranslation * rotationY;
         camera.forwardLinear = camMatrix[2];

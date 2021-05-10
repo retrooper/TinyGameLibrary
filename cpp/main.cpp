@@ -140,7 +140,7 @@ int main() {
     camera.farClipPlane = 100;
     camera.nearClipPlane = 0.1f;
     camera.fov = 80;
-    camera.position = {5.0, 1.1, 4.0};
+    camera.position = {1.0, 1.1, 4.0};
 
     camera.sensitivity = 1;
     double deltaTime, lastFrameTime;
