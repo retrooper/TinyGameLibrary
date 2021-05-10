@@ -114,10 +114,27 @@ int main() {
     std::vector<Entity> entities;
     for (uint32_t i = 0; i < 1; i++) {
         Entity entity;
-        entity.scale = {1, 1, 1};
-        entity.mesh = MeshLoader::loadObj("../resources/models/cube.obj", {1, 0, 0, 1});
-        entity.position = {i * 4, 1, i * 4};
+        entity.mesh = MeshLoader::loadObj("../resources/models/IronMan.obj", {1, 0, 0, 1});
+        entity.mesh.description.vertices.clear();
+        entity.mesh.description.indices.clear();
 
+        //top left - 0
+        entity.mesh.description.vertices.push_back(Vertex({-1.0f, -1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
+        //top right - 1
+        entity.mesh.description.vertices.push_back(Vertex({1.0f, -1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
+        //bottom left - 2
+        entity.mesh.description.vertices.push_back(Vertex({-1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
+        //bottom right - 3
+        entity.mesh.description.vertices.push_back(Vertex({1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));;
+        /*
+        entity.mesh.description.indices.push_back(0);
+        entity.mesh.description.indices.push_back(1);
+        entity.mesh.description.indices.push_back(2);
+        entity.mesh.description.indices.push_back(2);
+        entity.mesh.description.indices.push_back(1);
+        entity.mesh.description.indices.push_back(3);
+         */
+        entity.mesh.description.indices = {2, 0, 3, 0, 1, 3};
         renderer.uploadMesh(entity.mesh);
         entities.push_back(entity);
     }

@@ -15,6 +15,7 @@ namespace tgl {
         glm::vec3 position;
         glm::vec3 normal;
         glm::vec4 color;
+        Vertex() = default;
         Vertex(glm::vec3 position, glm::vec3 normal, glm::vec4 color);
 
         bool operator==(const Vertex &b) const;

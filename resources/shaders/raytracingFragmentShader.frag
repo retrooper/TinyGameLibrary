@@ -7,15 +7,9 @@ layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragViewVec;
 layout(location = 3) in vec3 fragLightPos;
 layout(location = 4) in vec3 fragWorldPos;
-layout(location = 5) in float iTime;
+layout(location = 5) in float time;
 
-const vec3 iResolution = vec3(1280, 720, 0);
-int       iFrame = 0;// shader playback frame
-const float[4]     iChannelTime = float[4](1, 1, 1, 1);// channel playback time (in seconds)
-const vec3      iChannelResolution[4] = vec3[4](iResolution, iResolution, iResolution, iResolution);// channel resolution (in pixels)
-vec4 iMouse = vec4(0, 0, 0, 0);// mouse pixel coords. xy: current (if MLB down), zw: click
-const float     iSampleRate = 44100;// sound sample rate (i.e., 44100)
-
+const vec2 iResolution = vec2(1280, 720);
 #define MAX_BOUNCES 2
 float gamma = 2.2;
 
@@ -136,7 +130,7 @@ vec3 randomVector(float seed)
 
 bool compare(inout Hit a, Hit b)
 {
-    if (b.m.f0 >= 0. && b.t < a.t)
+    if (b.m.f0 >= 0.0 && b.t < a.t)
     {
         a = b;
         return true;
@@ -146,15 +140,16 @@ bool compare(inout Hit a, Hit b)
 
 Hit intersectScene(Ray r)
 {
-    vec3 axis1 = randomVector(floor(iTime));
-    vec3 axis2 = randomVector(floor(iTime+1.));
-    vec3 axis = normalize(mix(axis1, axis2, fract(iTime)));
-    float translation = 4.*abs(2.*fract(iTime/8.)-1.) - 2.;
+    vec3 axis1 = randomVector(floor(time));
+    vec3 axis2 = randomVector(floor(time+1.0));
+    vec3 axis = normalize(mix(axis1, axis2, fract(time)));
 
-    Sphere s = Sphere(1., vec3(1., 1., 0.), Material(vec3(0.5), 0.04));
+
+    Sphere s = Sphere(1., vec3(1., 1., 0.0), Material(vec3(0.5), 0.04));
     Sphere s2 = Sphere(1.0, vec3(3.0, 3.0, 0.0), Material(vec3(0.5), 0.04));
-    Plane p  = Plane(0., vec3(0., 1., 0.), Material(vec3(0.5, 0.4, 0.3), 0.04));
-    //Cone c = Cone(0.95, 2., vec3(translation, 2., 1.), -axis, Material(vec3(1., 0., 0.), 0.02));
+    Plane p  = Plane(0., vec3(0., 1., 0.0), Material(vec3(0.5, 0.4, 0.3), 0.04));
+    //float translation = 4.*abs(2.*fract(time/8.)-1.) - 2.;
+    //Cone c = Cone(0.95, 2., vec3(translation, 2., 1.), -axis, Material(vec3(1., 0., 0.0), 0.02));
 
     Hit hit = noHit;
     compare(hit, intersectPlane(p, r));
@@ -179,7 +174,7 @@ vec3 skyColor(vec3 d)
     float transition = pow(smoothstep(0.02, .5, d.y), 0.4);
 
     vec3 sky = 2e2*mix(vec3(0.52, 0.77, 1), vec3(0.12, 0.43, 1), transition);
-    vec3 sun = sunLight.c * pow(abs(dot(d, sunLight.d)), 5000.);
+    vec3 sun = sunLight.c * pow(abs(dot(d, sunLight.d)), 5000.0);
     return sky + sun;
 }
 
@@ -195,30 +190,30 @@ float epsilon = 4e-4;
 
 vec3 accountForDirectionalLight(vec3 p, vec3 n, DirectionalLight l)
 {
-    if (intersectScene(Ray(p + epsilon * l.d, l.d)).m.f0 < 0.)
+    if (intersectScene(Ray(p + epsilon * l.d, l.d)).m.f0 < 0.0)
     {
         return clamp(dot(n, l.d), 0., 1.) * l.c;
     }
-    return vec3(0.);
+    return vec3(0.0);
 }
 
 vec3 radiance(Ray r)
 {
-    vec3 accum = vec3(0.);
+    vec3 accum = vec3(0.0);
     vec3 attenuation = vec3(1.);
 
     for (int i = 0; i <= MAX_BOUNCES; ++i)
     {
         Hit hit = intersectScene(r);
 
-        if (hit.m.f0 >= 0.)
+        if (hit.m.f0 >= 0.0)
         {
             float f = fresnel(hit.n, -r.d, hit.m.f0);
 
             vec3 hitPos = r.o + hit.t * r.d;
 
             // Diffuse
-            vec3 incoming = vec3(0.);
+            vec3 incoming = vec3(0.0);
             incoming += accountForDirectionalLight(hitPos, hit.n, sunLight);
 
             accum += (1. - f) * attenuation * hit.m.c * incoming;
@@ -260,7 +255,7 @@ vec3 Uncharted2ToneMapping(vec3 color)
 }
 
 void main() {
-    vec2 uv = 2. * gl_FragCoord.xy / iResolution.xy - 1.;
+    vec2 uv = 2.0 * gl_FragCoord.xy / iResolution - 1.0;
 
     float o1 = 0.25;
     float o2 = 0.75;
@@ -270,15 +265,15 @@ void main() {
     msaa[2] = vec2(-o1, -o2);
     msaa[3] = vec2(-o2,  o1);
 
-    vec3 color = vec3(0.);
+    vec3 color = vec3(0.0);
     for (int i = 0; i < 4; ++i)
     {
-        vec3 p0 = vec3(0., 1.1, 4.);
-        vec3 p = p0;
-        vec3 offset = vec3(msaa[i] / iResolution.y, 0.);
+        //CAMERA POSITION
+        vec3 camPos = vec3(5.0, 1.1, 4.);
+        vec3 offset = vec3(msaa[i] / iResolution.y, 0.0);
         vec3 d = normalize(vec3(iResolution.x/iResolution.y * uv.x, uv.y, -1.5) + offset);
-        Ray r = Ray(p, d);
-        color += radiance(r) / 4.;
+        Ray r = Ray(camPos, d);
+        color += radiance(r) / 4.0;
     }
 
     outColor = vec4(Uncharted2ToneMapping(color),1.0);

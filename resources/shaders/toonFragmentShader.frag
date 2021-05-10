@@ -7,6 +7,8 @@ layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragViewVec;
 layout(location = 3) in vec3 fragLightPos;
 layout(location = 4) in vec3 fragWorldPos;
+layout(location = 5) in float iTime;
+layout(location = 6) in vec4 vertLoc;
 
 const float highlightSize = 0.1;
 const float shadowSize = 2;
