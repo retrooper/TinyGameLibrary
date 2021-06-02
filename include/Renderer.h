@@ -55,6 +55,13 @@ namespace tgl {
         //Queue
         VkQueue vkGraphicsQueue{};
         uint8_t vkGraphicsQueueFamilyIndex{};
+
+        VkPipeline vkPipeline;
+        PipelineBuilder pipelineBuilder;
+
+        VkShaderModule vkVertexShaderModule;
+        VkShaderModule vkFragmentShaderModule;
+
         //Render pass
         //The renderpass allows us to tell the GPU that we are going to send some rendering commands allowing it to optimize. Subpasses also exist to allow it to optimize even further.
         VkRenderPass vkRenderPass{};
@@ -82,6 +89,8 @@ namespace tgl {
         void initFramebuffers();
 
         void initSynchronizationStructures();
+
+        void initPipeline();
 
         void updateBuffers(Camera& camera, const Light& light);
 

@@ -9,14 +9,11 @@ namespace tgl {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         void* renderDataMappedDestination;
+        VkDescriptorSet vkDescriptorSet;
         MeshRenderData renderData;
         AllocatedBuffer vertexBuffer;
         AllocatedBuffer indexBuffer;
         AllocatedBuffer renderDataBuffer;
-        VkPipeline vkPipeline;
-        PipelineBuilder pipelineBuilder;
-        VkShaderModule vkVertexShaderModule;
-        VkShaderModule vkFragmentShaderModule;
 
         bool operator==(const MeshDescription& other) const;
         bool operator<(const MeshDescription& other) const;

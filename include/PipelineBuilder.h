@@ -14,9 +14,7 @@ namespace tgl {
         VkPipelineMultisampleStateCreateInfo vkPipelineMultisampleStateCreateInfo{};
         VkPipelineLayout vkPipelineLayout{};
         VkDescriptorPool vkDescriptorPool{};
-        VkDescriptorSet vkDescriptorSet{};
         VkDescriptorSetLayout vkDescriptorSetLayout{};
-        VkDescriptorSetAllocateInfo vkDescriptorSetAllocateInfo{};
 
         PipelineBuilder() = default;
 
@@ -24,5 +22,7 @@ namespace tgl {
                          VkShaderModule &vkFragmentShaderModule, VkViewport& vkViewport, VkRect2D& vkScissor, VkPrimitiveTopology vkTopology,
                          VkPolygonMode vkPolygonMode,
                          VkCullModeFlags vkCullModeFlags, VkFrontFace vkFrontFace, bool depthTestEnabled, bool depthWriteEnabled);
+
+        void allocateDescriptorSets(VkDevice& vkLogicalDevice, VkDescriptorSet* vkDescriptorSet);
     };
 }

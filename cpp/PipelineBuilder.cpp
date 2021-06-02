@@ -86,7 +86,8 @@ namespace tgl {
 
 
         VkDescriptorPoolSize vkDescriptorPoolSize;
-        vkDescriptorPoolSize.descriptorCount = 1;
+        //TODO Adjust the descriptor count
+        vkDescriptorPoolSize.descriptorCount = 2;
         vkDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
         VkDescriptorPoolSize vkSamplerPoolSize;
@@ -94,7 +95,6 @@ namespace tgl {
         vkSamplerPoolSize.descriptorCount = 1;
 
         std::vector<VkDescriptorPoolSize> vkDescriptorPoolSizes;
-        vkDescriptorPoolSizes.reserve(2);
         vkDescriptorPoolSizes.push_back(vkDescriptorPoolSize);
         vkDescriptorPoolSizes.push_back(vkSamplerPoolSize);
 
@@ -102,7 +102,7 @@ namespace tgl {
         vkDescriptorPoolCreateInfo.pNext = nullptr;
         vkDescriptorPoolCreateInfo.flags = 0;
         vkDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        vkDescriptorPoolCreateInfo.maxSets = 1; //One set
+        vkDescriptorPoolCreateInfo.maxSets = 2; //One set
         vkDescriptorPoolCreateInfo.poolSizeCount = vkDescriptorPoolSizes.size();
         vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSizes.data();
 
@@ -119,18 +119,6 @@ namespace tgl {
 
         VK_HANDLE_ERROR(vkCreateDescriptorSetLayout(vkLogicalDevice, &vkDescriptorSetLayoutCreateInfo, nullptr, &vkDescriptorSetLayout),
                         "Failed to create a descriptor set layout!");
-
-        vkDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        vkDescriptorSetAllocateInfo.pNext = nullptr;
-        vkDescriptorSetAllocateInfo.descriptorPool = vkDescriptorPool;
-        vkDescriptorSetAllocateInfo.descriptorSetCount = 1;
-        vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout;
-
-        VK_HANDLE_ERROR(
-                vkAllocateDescriptorSets(vkLogicalDevice, &vkDescriptorSetAllocateInfo, &vkDescriptorSet),
-                "Failed to allocate a descriptor set!");
-        //TOODO vk write descriptorset
-
 
         VkPipelineLayoutCreateInfo vkPipelineLayoutCreateInfo{};
         vkPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -171,5 +159,17 @@ namespace tgl {
         VkPipeline vkPipeline;
         VK_HANDLE_ERROR(vkCreateGraphicsPipelines(vkLogicalDevice, VK_NULL_HANDLE, 1, &vkGraphicsPipelineCreateInfo, nullptr, &vkPipeline), "Failed to create the graphics pipeline!");
         return vkPipeline;
+    }
+
+    void PipelineBuilder::allocateDescriptorSets(VkDevice& vkLogicalDevice, VkDescriptorSet *vkDescriptorSet) {
+        VkDescriptorSetAllocateInfo  vkDescriptorSetAllocateInfo{};
+        vkDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        vkDescriptorSetAllocateInfo.pNext = nullptr;
+        vkDescriptorSetAllocateInfo.descriptorPool = vkDescriptorPool;
+        vkDescriptorSetAllocateInfo.descriptorSetCount = 1;
+        vkDescriptorSetAllocateInfo.pSetLayouts = &vkDescriptorSetLayout;
+        VK_HANDLE_ERROR(
+                vkAllocateDescriptorSets(vkLogicalDevice, &vkDescriptorSetAllocateInfo, vkDescriptorSet),
+                "Failed to allocate a descriptor set!");
     }
 }

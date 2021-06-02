@@ -4,7 +4,6 @@
 #include "Window.h"
 #include "TGL.h"
 #include "MeshLoader.h"
-#include <deque>
 
 using namespace tgl;
 
