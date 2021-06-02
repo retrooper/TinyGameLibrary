@@ -1,27 +1,23 @@
 #pragma once
-
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 #include <vulkan/vulkan.h>
 #include <vector>
-
 namespace tgl {
     struct VertexInputDescription {
         std::vector<VkVertexInputBindingDescription> bindings;
         std::vector<VkVertexInputAttributeDescription> attributes;
+
+        VkPipelineVertexInputStateCreateFlags vkPipelineVertexInputStateCreateFlags = 0;
     };
 
     struct Vertex {
         glm::vec3 position;
         glm::vec3 normal;
         glm::vec4 color;
-        Vertex() = default;
         Vertex(glm::vec3 position, glm::vec3 normal, glm::vec4 color);
-
         bool operator==(const Vertex &b) const;
-
         bool operator!=(const Vertex &b) const;
-
         static VertexInputDescription getVertexDescription();
     };
 }

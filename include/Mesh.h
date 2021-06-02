@@ -8,8 +8,11 @@ namespace tgl {
     struct MeshDescription {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
+        void* renderDataMappedDestination;
+        MeshRenderData renderData;
         AllocatedBuffer vertexBuffer;
         AllocatedBuffer indexBuffer;
+        AllocatedBuffer renderDataBuffer;
         VkPipeline vkPipeline;
         PipelineBuilder pipelineBuilder;
         VkShaderModule vkVertexShaderModule;
@@ -21,8 +24,5 @@ namespace tgl {
 
     struct Mesh {
         MeshDescription description;
-        MeshRenderData data{};
-        AllocatedBuffer meshDataBuffer{};
-        volatile bool uploaded = false;
     };
 }

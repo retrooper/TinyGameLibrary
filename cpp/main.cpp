@@ -112,22 +112,12 @@ int main() {
     renderer.init();
 
     std::vector<Entity> entities;
-    for (uint32_t i = 0; i < 1; i++) {
+    for (uint32_t i = 0; i < 2; i++) {
         Entity entity;
+        entity.scale = {0.05, 0.05, 0.05};
         entity.mesh = MeshLoader::loadObj("../resources/models/IronMan.obj", {1, 0, 0, 1});
-        entity.mesh.description.vertices.clear();
-        entity.mesh.description.indices.clear();
-
-        //top left - 0
-        entity.mesh.description.vertices.push_back(Vertex({-1.0f, -1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
-        //top right - 1
-        entity.mesh.description.vertices.push_back(Vertex({1.0f, -1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
-        //bottom left - 2
-        entity.mesh.description.vertices.push_back(Vertex({-1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));
-        //bottom right - 3
-        entity.mesh.description.vertices.push_back(Vertex({1.0f, 1.0f, 0.0f}, {0, 0, 0}, {1, 0, 0, 1}));;
-        entity.mesh.description.indices = {2, 0, 3, 0, 1, 3};
-        renderer.uploadMesh(entity.mesh);
+        entity.position = {i * 4, 1, i * 4};
+        renderer.uploadEntity(entity);
         entities.push_back(entity);
     }
     GPU gpu = renderer.gpu;
@@ -140,25 +130,26 @@ int main() {
     camera.farClipPlane = 100;
     camera.nearClipPlane = 0.1f;
     camera.fov = 80;
-    camera.position = {1.0, 1.1, 4.0};
+    camera.position = {0, 0, 0};
 
     camera.sensitivity = 1;
     double deltaTime, lastFrameTime;
     Light light{};
     light.position = {0, -6, 0};
+    renderer.registerEntities(entities);
     while (!window.hasRequestedClose()) {
         //Update the window events. We need this to detect if they requested to close the window for example.
-        renderer.registerEntities(entities);
         window.updateEvents();
         renderer.render(camera, light);
-        renderer.clearEntities();
         updateCamera(camera, window, renderer, deltaTime);
         double now = glfwGetTime() * 1000;
         deltaTime = (now - lastFrameTime) / 1000.0;
         lastFrameTime = now;
     }
+
     //Destroy the renderer
     renderer.destroy();
+    renderer.clearEntities();
     //Destroy the window
     window.destroy();
     //Terminate TGL

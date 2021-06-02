@@ -97,7 +97,7 @@ namespace tgl {
 
         void init();
 
-        void uploadMesh(Mesh &mesh);
+        void uploadEntity(Entity &entity);
 
         void registerEntity(Entity& entity);
 

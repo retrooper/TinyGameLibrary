@@ -14,6 +14,8 @@ include_directories(include)
 file(GLOB all_SRCS "${PROJECT_SOURCE_DIR}/cpp/*.cpp")
 add_executable(tgl ${all_SRCS})
 
+include(FetchContent)
+
 #Add Vulkan
 find_package(Vulkan REQUIRED)
 target_link_libraries(tgl Vulkan::Vulkan)
@@ -26,7 +28,6 @@ find_package(glfw3 REQUIRED)
 target_link_libraries(tgl glfw)
 
 #Add Vk-Bootstrap
-include(FetchContent)
 FetchContent_Declare(
         fetch_vk_bootstrap
         GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap

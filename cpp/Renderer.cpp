@@ -265,7 +265,6 @@ namespace tgl {
 
     void Renderer::updateBuffers(Camera &camera, const Light &light) {
         glm::mat4 cameraTranslation = glm::translate(camera.position);
-        std::cout << "CAMERA POS: {" << camera.position.x << ", " << camera.position.y << ", " << camera.position.z << "}" << std::endl;
         glm::vec3 rotAxisX = {1, 0, 0};
         glm::vec3 rotAxisY = {0, 1, 0};
         glm::vec3 rotAxisZ = {0, 0, 1};
@@ -275,8 +274,8 @@ namespace tgl {
         //camera view matrix
         glm::mat4 camMatrix = cameraTranslation * rotationZ * rotationY * rotationX;
         camera.data.view = glm::inverse(camMatrix);
-        camera.right = -camMatrix[1];
         camera.forward = camMatrix[2];
+        camera.right = camMatrix[0];
         //Camera forward linear
         camMatrix = cameraTranslation * rotationY;
         camera.forwardLinear = camMatrix[2];
@@ -284,17 +283,15 @@ namespace tgl {
         camera.data.projection = glm::perspectiveLH((camera.fov / 100.0F), window->aspect,
                                                     camera.nearClipPlane, camera.farClipPlane);
         for (Entity &entity : entities) {
-            entity.mesh.data.time = 10.0f;
-            glm::vec3 cameraPosition = camera.position;
-            entity.mesh.data.cameraPos = cameraPosition;
             glm::mat4 translationMatrix = glm::translate(entity.position);
             glm::mat4 entityRotationX = glm::rotate(entity.pitch + M_PI_2f32, rotAxisX);
+            //glm::mat4 entityRotationX = glm::rotate(entity.pitch, rotAxisX);
             glm::mat4 entityRotationY = glm::rotate(entity.yaw, rotAxisY);
             glm::mat4 entityRotationZ = glm::rotate(entity.roll, rotAxisZ);
             glm::mat4 rotationMatrix = entityRotationX * entityRotationY * entityRotationZ;
             glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), entity.scale);
-            entity.mesh.data.model = translationMatrix * rotationMatrix * scaleMatrix;
-            entity.mesh.data.lightPos = light.position;
+            entity.mesh.description.renderData.model = translationMatrix * rotationMatrix * scaleMatrix;
+            entity.mesh.description.renderData.lightPos = light.position;
         }
     }
 
@@ -311,53 +308,56 @@ namespace tgl {
         initSynchronizationStructures();
     }
 
-    void Renderer::uploadMesh(Mesh &mesh) {
+    void Renderer::uploadEntity(Entity &entity){
         VkBufferCreateInfo vkBufferCreateInfo{};
         vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        vkBufferCreateInfo.size = mesh.description.vertices.size() * sizeof(Vertex);
+        vkBufferCreateInfo.size = entity.mesh.description.vertices.size() * sizeof(Vertex);
         vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
         VmaAllocationCreateInfo vmaAllocationCreateInfo{};
         //Allocated by the CPU, visible/readable by the GPU.
         vmaAllocationCreateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        VkUtils::createBuffer(allocator, mesh.description.vertexBuffer.allocation,
-                              mesh.description.vertexBuffer.vkBuffer,
-                              mesh.description.vertices.size() * sizeof(Vertex),
+        VkUtils::createBuffer(allocator, entity.mesh.description.vertexBuffer.allocation,
+                              entity.mesh.description.vertexBuffer.vkBuffer,
+                              entity.mesh.description.vertices.size() * sizeof(Vertex),
                               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 
-        VkUtils::createBuffer(allocator, mesh.description.indexBuffer.allocation,
-                              mesh.description.indexBuffer.vkBuffer,
-                              mesh.description.indices.size() * sizeof(uint32_t),
+        VkUtils::createBuffer(allocator, entity.mesh.description.indexBuffer.allocation,
+                              entity.mesh.description.indexBuffer.vkBuffer,
+                              entity.mesh.description.indices.size() * sizeof(uint32_t),
                               VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
-        VkUtils::createBuffer(allocator, mesh.meshDataBuffer.allocation,
-                              mesh.meshDataBuffer.vkBuffer, sizeof(MeshRenderData),
+        VkUtils::createBuffer(allocator, entity.mesh.description.renderDataBuffer.allocation,
+                              entity.mesh.description.renderDataBuffer.vkBuffer, sizeof(MeshRenderData),
                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
         // vkBufferCreateInfo.size = mesh.description.indices.size() * sizeof(MeshRenderData);
 
         DeletionQueue::queue([=]() {
-            vmaDestroyBuffer(allocator, mesh.description.vertexBuffer.vkBuffer,
-                             mesh.description.vertexBuffer.allocation);
-            vmaDestroyBuffer(allocator, mesh.description.indexBuffer.vkBuffer, mesh.description.indexBuffer.allocation);
-            vmaDestroyBuffer(allocator, mesh.meshDataBuffer.vkBuffer, mesh.meshDataBuffer.allocation);
+            vmaDestroyBuffer(allocator, entity.mesh.description.vertexBuffer.vkBuffer,
+                             entity.mesh.description.vertexBuffer.allocation);
+            vmaDestroyBuffer(allocator, entity.mesh.description.indexBuffer.vkBuffer, entity.mesh.description.indexBuffer.allocation);
+            vmaUnmapMemory(allocator, entity.mesh.description.renderDataBuffer.allocation);
+            vmaDestroyBuffer(allocator, entity.mesh.description.renderDataBuffer.vkBuffer, entity.mesh.description.renderDataBuffer.allocation);
         });
 
-        //Converted our vertices data into GPU readable data
-        void *data;
-        vmaMapMemory(allocator, mesh.description.vertexBuffer.allocation, &data);
-        memcpy(data, mesh.description.vertices.data(), mesh.description.vertices.size() * sizeof(Vertex));
-        vmaUnmapMemory(allocator, mesh.description.vertexBuffer.allocation);
+        vmaMapMemory(allocator, entity.mesh.description.renderDataBuffer.allocation, &entity.mesh.description.renderDataMappedDestination);
+        memcpy(entity.mesh.description.renderDataMappedDestination, &entity.mesh.description.renderData, sizeof(MeshRenderData));
 
-        vmaMapMemory(allocator, mesh.description.indexBuffer.allocation, &data);
-        memcpy(data, mesh.description.indices.data(), mesh.description.indices.size() * sizeof(uint32_t));
-        vmaUnmapMemory(allocator, mesh.description.indexBuffer.allocation);
+        void* data;
+        vmaMapMemory(allocator, entity.mesh.description.vertexBuffer.allocation, &data);
+        memcpy(data, entity.mesh.description.vertices.data(), entity.mesh.description.vertices.size() * sizeof(Vertex));
+        vmaUnmapMemory(allocator, entity.mesh.description.vertexBuffer.allocation);
+
+        vmaMapMemory(allocator, entity.mesh.description.indexBuffer.allocation, &data);
+        memcpy(data, entity.mesh.description.indices.data(), entity.mesh.description.indices.size() * sizeof(uint32_t));
+        vmaUnmapMemory(allocator, entity.mesh.description.indexBuffer.allocation);
 
         VkDescriptorBufferInfo vkDescriptorBufferInfo;
-        vkDescriptorBufferInfo.buffer = mesh.meshDataBuffer.vkBuffer;
+        vkDescriptorBufferInfo.buffer = entity.mesh.description.renderDataBuffer.vkBuffer;
         vkDescriptorBufferInfo.offset = 0; //Whole buffer
-        vkDescriptorBufferInfo.range = sizeof(mesh.data);
+        vkDescriptorBufferInfo.range = sizeof(entity.mesh.description.renderData);
 
         VkWriteDescriptorSet vkWriteDescriptorSet;
         vkWriteDescriptorSet.pNext = nullptr;
@@ -375,21 +375,21 @@ namespace tgl {
         vkScissor.offset.y = 0;
 
         std::vector<uint32_t> vertexShaderCode = VkUtils::readFile("../resources/shaders/vert.spv");
-        mesh.description.vkVertexShaderModule = VkUtils::createShaderModule(vkLogicalDevice, vertexShaderCode);
+        entity.mesh.description.vkVertexShaderModule = VkUtils::createShaderModule(vkLogicalDevice, vertexShaderCode);
 
         std::vector<uint32_t> fragmentShaderCode = VkUtils::readFile("../resources/shaders/frag.spv");
-        mesh.description.vkFragmentShaderModule = VkUtils::createShaderModule(vkLogicalDevice, fragmentShaderCode);
+        entity.mesh.description.vkFragmentShaderModule = VkUtils::createShaderModule(vkLogicalDevice, fragmentShaderCode);
 
-        mesh.description.vkPipeline = mesh.description.pipelineBuilder.build(vkLogicalDevice, gpu, vkRenderPass,
-                                                                             mesh.description.vkVertexShaderModule,
-                                                                             mesh.description.vkFragmentShaderModule,
+        entity.mesh.description.vkPipeline = entity.mesh.description.pipelineBuilder.build(vkLogicalDevice, gpu, vkRenderPass,
+                                                                                           entity.mesh.description.vkVertexShaderModule,
+                                                                                           entity.mesh.description.vkFragmentShaderModule,
                                                                              vkViewport, vkScissor,
                                                                              VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                                              VK_POLYGON_MODE_FILL,
                                                                              VK_CULL_MODE_BACK_BIT,
                                                                              VK_FRONT_FACE_CLOCKWISE, true, true);
 
-        vkWriteDescriptorSet.dstSet = mesh.description.pipelineBuilder.vkDescriptorSet;
+        vkWriteDescriptorSet.dstSet = entity.mesh.description.pipelineBuilder.vkDescriptorSet;
         vkWriteDescriptorSet.dstBinding = 0;//Binding to update
         vkWriteDescriptorSet.dstArrayElement = 0;
         vkWriteDescriptorSet.descriptorCount = 1;
@@ -404,25 +404,24 @@ namespace tgl {
         vkUpdateDescriptorSets(vkLogicalDevice, vkWriteDescriptorSets.size(), vkWriteDescriptorSets.data(), 0,
                                nullptr);
 
-        vkDestroyShaderModule(vkLogicalDevice, mesh.description.vkVertexShaderModule, nullptr);
-        vkDestroyShaderModule(vkLogicalDevice, mesh.description.vkFragmentShaderModule, nullptr);
+        vkDestroyShaderModule(vkLogicalDevice, entity.mesh.description.vkVertexShaderModule, nullptr);
+        vkDestroyShaderModule(vkLogicalDevice, entity.mesh.description.vkFragmentShaderModule, nullptr);
         DeletionQueue::queue([=]() {
-            vkDestroyPipelineLayout(vkLogicalDevice, mesh.description.pipelineBuilder.vkPipelineLayout, nullptr);
-            vkDestroyPipeline(vkLogicalDevice, mesh.description.vkPipeline, nullptr);
-            vkDestroyDescriptorSetLayout(vkLogicalDevice, mesh.description.pipelineBuilder.vkDescriptorSetLayout,
+            vkDestroyPipelineLayout(vkLogicalDevice, entity.mesh.description.pipelineBuilder.vkPipelineLayout, nullptr);
+            vkDestroyPipeline(vkLogicalDevice, entity.mesh.description.vkPipeline, nullptr);
+            vkDestroyDescriptorSetLayout(vkLogicalDevice, entity.mesh.description.pipelineBuilder.vkDescriptorSetLayout,
                                          nullptr);
-            vkDestroyDescriptorPool(vkLogicalDevice, mesh.description.pipelineBuilder.vkDescriptorPool, nullptr);
+            vkDestroyDescriptorPool(vkLogicalDevice, entity.mesh.description.pipelineBuilder.vkDescriptorPool, nullptr);
         });
-
-        mesh.uploaded = true;
     }
 
     void Renderer::registerEntity(Entity &entity) {
+        entity.registered = false;
         entities.push_back(entity);
     }
 
-    void Renderer::registerEntities(std::vector<Entity> &entities) {
-        for (Entity entity : entities) {
+    void Renderer::registerEntities(std::vector<Entity> &list) {
+        for (Entity entity : list) {
             registerEntity(entity);
         }
     }
@@ -495,12 +494,12 @@ namespace tgl {
                                     entity.mesh.description.pipelineBuilder.vkPipelineLayout,
                                     0, 1,
                                     &entity.mesh.description.pipelineBuilder.vkDescriptorSet, 0, nullptr);
-            void *data;
-            vmaMapMemory(allocator, entity.mesh.meshDataBuffer.allocation, &data);
-            memcpy(data, &entity.mesh.data, sizeof(MeshRenderData));
-            vmaUnmapMemory(allocator, entity.mesh.meshDataBuffer.allocation);
 
             uint32_t indexSize = entity.mesh.description.indices.size();
+            if (!entity.registered) {
+                memcpy(entity.mesh.description.renderDataMappedDestination, &entity.mesh.description.renderData, sizeof(MeshRenderData));
+                entity.registered = true;
+            }
             //we can now draw the entity
             vkCmdDrawIndexed(frameData.vkMainCommandBuffer, indexSize, 1, 0, 0, 0);
         }
@@ -553,7 +552,8 @@ namespace tgl {
             vkDestroyFramebuffer(vkLogicalDevice, vkFramebuffers[i], nullptr);
             vkDestroyImageView(vkLogicalDevice, vkSwapchainImageViews[i], nullptr);
         }
-        vmaDestroyAllocator(allocator);//TODO civ place
+
+        vmaDestroyAllocator(allocator);
         vkDestroyDevice(vkLogicalDevice, nullptr);
         vkDestroySurfaceKHR(vkInstance, vkSurface, nullptr);
         vkb::destroy_debug_utils_messenger(vkInstance, vkDebugUtilsMessenger, nullptr);
